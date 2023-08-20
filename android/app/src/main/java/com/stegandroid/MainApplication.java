@@ -1,5 +1,6 @@
 package com.stegandroid;
 
+import com.stegandroid.steganography.LSBSteganographyPackage; // Add this import at the top
 import android.app.Application;
 import com.facebook.react.PackageList;
 import com.facebook.react.ReactApplication;
@@ -23,8 +24,8 @@ public class MainApplication extends Application implements ReactApplication {
         protected List<ReactPackage> getPackages() {
           @SuppressWarnings("UnnecessaryLocalVariable")
           List<ReactPackage> packages = new PackageList(this).getPackages();
-          // Packages that cannot be autolinked yet can be added manually here, for example:
-          // packages.add(new MyReactNativePackage());
+          // Packages that cannot be auto linked yet can be added manually here, for example:
+          packages.add(new LSBSteganographyPackage());
           return packages;
         }
 
