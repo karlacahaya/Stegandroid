@@ -229,6 +229,7 @@ const EncodeBismillah = () => {
 
         {isLoading && <ActivityIndicator size="large" color="#0000ff" />}
 
+        {/* modal if error */}
         <Modal
           animationType="slide"
           transparent={true}
@@ -248,6 +249,7 @@ const EncodeBismillah = () => {
           </View>
         </Modal>
 
+        {/* modal if success */}
         <Modal
           animationType="slide"
           transparent={true}

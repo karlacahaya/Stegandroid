@@ -68,13 +68,20 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
         }
 
         // 2. Convert message to binary string (with length prefix)
+        // Convert message length to binary string (with length prefix)
         String binaryLength = String.format("%16s", Integer.toBinaryString(message.length())).replace(' ', '0'); // 16
                                                                                                                  // bits
                                                                                                                  // length
+        // Log.d("y", "binaryLength encode:" + binaryLength);
+
         StringBuilder binaryMessage = new StringBuilder(binaryLength);
         for (char c : message.toCharArray()) {
-            binaryMessage.append(Integer.toBinaryString(c));
+            String binString = String.format("%8s", Integer.toBinaryString(c)).replace(' ', '0'); // 8 bits for a char
+            binaryMessage.append(binString);
         }
+
+        Log.d("Encode", "binaryMessage Encode:" + binaryMessage);
+        Log.d("Encode", "message Encode:" + message);
 
         // 3. Embed the binary message into the image's pixels
         int messageIndex = 0;
@@ -99,6 +106,7 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
             }
         }
 
+        // Log.d("y", "mutableBitmap encode:" + mutableBitmap);
         // Returning the encoded image
         return mutableBitmap;
     }
@@ -116,6 +124,7 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
         // Use this newFileName when you're setting the outputPath:
         String outputPath = reactContext.getExternalFilesDir(null) + File.separator + newFileName;
         java.io.OutputStream stream = new java.io.FileOutputStream(outputPath);
+        // Log.d("y", "saveEncodedImage encodedImage:" + encodedImage);
         encodedImage.compress(Bitmap.CompressFormat.PNG, 100, stream);
 
         stream.flush();
@@ -141,6 +150,8 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
             encodedImage.compress(Bitmap.CompressFormat.PNG, 100, mediaStoreStream);
         }
 
+        Log.d("y", "----------------------DECODE LOGS----------------------");
+
         return savedImageUri.toString();
     }
 
@@ -155,6 +166,7 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
     public void decode(String imageUri, Callback callback) {
         try {
             String decodedMessage = decodeMessageFromImage(imageUri);
+            // Log.d("y", "image uri decode:" + imageUri);
             callback.invoke(decodedMessage);
         } catch (Exception e) {
             callback.invoke("Error: " + e.getMessage());
@@ -174,18 +186,25 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
         int messageLength = Integer.parseInt(binaryLength.toString(), 2);
 
         // 2. Extract the actual message
-        for (int i = 16; i < (messageLength + 1) * 16; i++) {
+        // You've already extracted the 16 bits for the message length, so start from
+        // index 16
+        // and remember, for each character of the message, you're extracting 8 bits
+        for (int i = 16; i < 16 + (messageLength * 8); i++) {
             int pixel = image.getPixel(i % image.getWidth(), i / image.getWidth());
             binaryMessage.append(pixel & 1);
         }
 
+        Log.d("Decode", "binaryMessage Decode:" + binaryMessage);
+
         // Convert the binary message back to text
         StringBuilder textMessage = new StringBuilder();
-        for (int i = 0; i < binaryMessage.length(); i += 16) {
-            String byteString = binaryMessage.substring(i, i + 16);
+        for (int i = 0; i < binaryMessage.length(); i += 8) { // Use 8 since each char is represented by 8 bits
+            String byteString = binaryMessage.substring(i, i + 8); // Extract each 8-bit sequence
             int charCode = Integer.parseInt(byteString, 2);
             textMessage.append((char) charCode);
         }
+
+        Log.d("Decode", "textMessage Decode:" + textMessage);
 
         return textMessage.toString();
     }

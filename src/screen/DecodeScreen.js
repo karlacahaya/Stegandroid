@@ -1,6 +1,5 @@
 import React, {useState, useEffect, useCallback} from 'react';
 import {
-  View,
   Text,
   StyleSheet,
   TouchableOpacity,
@@ -10,14 +9,11 @@ import {
   NativeModules,
   ScrollView,
   StatusBar,
+  ActivityIndicator,
+  Modal,
+  View,
 } from 'react-native';
-import DocumentPicker, {
-  DirectoryPickerResponse,
-  DocumentPickerResponse,
-  isCancel,
-  isInProgress,
-  types,
-} from 'react-native-document-picker';
+import ImagePicker from 'react-native-image-crop-picker';
 
 const styles = StyleSheet.create({
   container: {
@@ -42,7 +38,7 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     flexDirection: 'row',
-    marginTop: 20,
+    marginTop: 5,
   },
   image: {
     height: 300,
@@ -57,32 +53,165 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 10,
   },
+  centeredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 22,
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 35,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  button1: {
+    borderRadius: 20,
+    padding: 10,
+    elevation: 2,
+  },
+  textStyle: {
+    color: 'grey',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    fontSize: 20,
+  },
+  modalText: {
+    marginBottom: 15,
+    textAlign: 'center',
+  },
 });
 
-const DecodeScreen = () => {
-  const [fileResponse, setFileResponse] = useState([]);
+const {LSBSteganography} = NativeModules;
 
-  const handleDocumentSelection = useCallback(async () => {
+const DecodeScreen = () => {
+  // const [text, setText] = React.useState('');
+  const [originalImageUri, setOriginalImageUri] = useState(null);
+  const [decodedImageMsg, setDecodedImageMsg] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
+  const [isErrorModalVisible, setIsErrorModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const handleOpenGallery = async () => {
     try {
-      const response = await DocumentPicker.pick({
-        presentationStyle: 'fullScreen',
+      const image = await ImagePicker.openPicker({
+        // width: 300,
+        // height: 400,
+        cropping: false,
       });
-      setFileResponse(response);
-      console.log('====================================');
-      console.log('fileResponse', fileResponse);
-      console.log('====================================');
-    } catch (err) {
-      console.warn(err);
+
+      setOriginalImageUri(image.path);
+    } catch (error) {
+      console.error(error);
     }
-  }, []);
+  };
+
+  const handleDecodeImage = async () => {
+    if (!originalImageUri) {
+      console.warn('Please select an image');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const imagePath = originalImageUri.replace('file://', '');
+      console.log('original image path:', originalImageUri);
+      LSBSteganography.decode(imagePath, result => {
+        setIsLoading(false);
+
+        if (result.startsWith('Error:')) {
+          setErrorMessage(result);
+          setIsErrorModalVisible(true);
+        } else {
+          console.log('Decoded image msg:', result);
+          setDecodedImageMsg(result);
+          setIsSuccessModalVisible(true);
+        }
+      });
+    } catch (error) {
+      setIsLoading(false);
+      setErrorMessage(error.message);
+      setIsErrorModalVisible(true);
+    }
+  };
   return (
-    <SafeAreaView>
-      <ScrollView>
-        <TouchableOpacity
-          onPress={handleDocumentSelection}
-          style={styles.button}>
-          <Text style={styles.buttonText}>Select from Gallery</Text>
-        </TouchableOpacity>
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView}>
+        {originalImageUri && (
+          <>
+            <Text style={styles.textStyle}>Original Image</Text>
+            <View style={styles.imageContainer}>
+              <Image source={{uri: originalImageUri}} style={styles.image} />
+            </View>
+          </>
+        )}
+
+        {!originalImageUri && (
+          <TouchableOpacity onPress={handleOpenGallery} style={styles.button}>
+            <Text style={styles.buttonText}>Select from Gallery</Text>
+          </TouchableOpacity>
+        )}
+
+        {!decodedImageMsg && (
+          <>
+            <TouchableOpacity onPress={handleDecodeImage} style={styles.button}>
+            <Text style={styles.buttonText}>Decode</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {isLoading && <ActivityIndicator size="large" color="#0000ff" />}
+
+        {/* modal if error */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={isErrorModalVisible}
+          onRequestClose={() => {
+            setIsErrorModalVisible(false);
+          }}>
+          <View style={styles.centeredView}>
+            <View style={styles.modalView}>
+              <Text style={styles.modalText}>{errorMessage}</Text>
+              <TouchableOpacity
+                style={{...styles.button1, backgroundColor: '#f05146'}}
+                onPress={() => setIsErrorModalVisible(false)}>
+                <Text style={styles.textStyle}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* modal if success */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={isSuccessModalVisible}
+          onRequestClose={() => {
+            setIsSuccessModalVisible(false);
+          }}>
+          <View style={styles.centeredView}>
+            <View style={styles.modalView}>
+              <Text style={styles.modalText}>Decode is success!</Text>
+              <TouchableOpacity
+                style={{...styles.button1, backgroundColor: '#5f5ae8'}}
+                onPress={() => setIsSuccessModalVisible(false)}>
+                <Text style={styles.textStyle}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
