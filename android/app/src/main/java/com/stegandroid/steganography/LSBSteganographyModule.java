@@ -23,6 +23,12 @@ import android.content.ContentValues;
 import android.provider.MediaStore;
 import android.net.Uri;
 
+//imports for AES encryption and key management
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
+import java.security.Key;
+import java.util.Base64;
+
 public class LSBSteganographyModule extends ReactContextBaseJavaModule {
     private final ReactApplicationContext reactContext;
 
@@ -38,9 +44,9 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void encode(String imageUri, String message, Callback callback) {
+    public void encode(String imageUri, String message, String encryptionKey, Callback callback) {
         try {
-            Bitmap encodedImage = encodeImageWithMessage(imageUri, message);
+            Bitmap encodedImage = encodeImageWithMessage(imageUri, encryptionKey, message);
             String savedImagePath = saveEncodedImage(encodedImage, imageUri);
             refreshGallery(savedImagePath);
             callback.invoke(savedImagePath);
@@ -49,70 +55,84 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
         }
     }
 
-    private Bitmap encodeImageWithMessage(String imageUri, String message) throws Exception {
-        // ... Your existing image encoding logic (Steps 1, 2, 3)
-        // Log the image type before attempting to decode
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inJustDecodeBounds = true; // Avoid memory allocation here
-        BitmapFactory.decodeFile(imageUri, options);
-        Log.d("LSBSteganography", "Image URI: " + imageUri);
-        Log.d("LSBSteganography", "Image type: " + options.outMimeType);
+    private Bitmap encodeImageWithMessage(String imageUri, String message, String encryptionKey) throws Exception {
+        try {
+            // Log the image type before attempting to decode
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inJustDecodeBounds = true; // Avoid memory allocation here
+            BitmapFactory.decodeFile(imageUri, options);
+            Log.d("LSBSteganography", "Image URI: " + imageUri);
+            Log.d("LSBSteganography", "Image type: " + options.outMimeType);
 
-        Bitmap image = BitmapFactory.decodeFile(imageUri);
+            Bitmap image = BitmapFactory.decodeFile(imageUri);
 
-        // 1. Check if the image can contain the message
-        // 1. Check if the image can contain the message
-        int imageSize = image.getWidth() * image.getHeight();
-        if (message.length() > imageSize) {
-            throw new Exception("Error: Message too long for this image");
-        }
-
-        // 2. Convert message to binary string (with length prefix)
-        // Convert message length to binary string (with length prefix)
-        String binaryLength = String.format("%16s", Integer.toBinaryString(message.length())).replace(' ', '0'); // 16
-                                                                                                                 // bits
-                                                                                                                 // length
-        // Log.d("y", "binaryLength encode:" + binaryLength);
-
-        StringBuilder binaryMessage = new StringBuilder(binaryLength);
-        for (char c : message.toCharArray()) {
-            String binString = String.format("%8s", Integer.toBinaryString(c)).replace(' ', '0'); // 8 bits for a char
-            binaryMessage.append(binString);
-        }
-
-        Log.d("Encode", "binaryMessage Encode:" + binaryMessage);
-        Log.d("Encode", "message Encode:" + message);
-
-        // 3. Embed the binary message into the image's pixels
-        int messageIndex = 0;
-        Bitmap mutableBitmap = image.copy(Bitmap.Config.ARGB_8888, true);
-        outerloop: for (int y = 0; y < image.getHeight(); y++) {
-            for (int x = 0; x < image.getWidth(); x++) {
-                if (messageIndex >= binaryMessage.length()) {
-                    break outerloop;
-                }
-
-                int pixel = mutableBitmap.getPixel(x, y);
-                char bit = binaryMessage.charAt(messageIndex);
-
-                if (bit == '1') {
-                    pixel |= 1;
-                } else {
-                    pixel &= ~1;
-                }
-
-                mutableBitmap.setPixel(x, y, pixel);
-                messageIndex++;
+            // Check if the image can contain the message
+            int imageSize = image.getWidth() * image.getHeight();
+            if (message.length() > imageSize) {
+                throw new Exception("Error: Message too long for this image");
             }
+
+            // Convert message length to binary string (with length prefix)
+            String binaryLength = String.format("%16s", Integer.toBinaryString(message.length())).replace(' ', '0'); // 16bitslength
+            // Log.d("y", "binaryLength encode:" + binaryLength);
+
+            StringBuilder binaryMessage = new StringBuilder(binaryLength);
+            for (char c : message.toCharArray()) {
+                String binString = String.format("%8s", Integer.toBinaryString(c)).replace(' ', '0'); // 8 bits for a
+                                                                                                      // char
+                binaryMessage.append(binString);
+            }
+
+            Log.d("Encode", "binaryMessage:" + binaryMessage);
+            Log.d("Encode", "message:" + message);
+
+            // Encrypt the binary message using AES
+            Cipher cipher = Cipher.getInstance("AES");
+            Key key = new SecretKeySpec(encryptionKey.getBytes(), "AES");
+            cipher.init(Cipher.ENCRYPT_MODE, key);
+            byte[] encryptedBytes = cipher.doFinal(binaryMessage.toString().getBytes());
+
+            // Convert encrypted bytes to a binary string
+            StringBuilder encryptedBinaryMessage = new StringBuilder();
+            for (byte b : encryptedBytes) {
+                encryptedBinaryMessage.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
+            }
+
+            Log.d("Encode", "encryptedBinaryMessage:" + encryptedBinaryMessage);
+
+            // Embed the binary message into the image's pixels
+            int messageIndex = 0;
+            Bitmap mutableBitmap = image.copy(Bitmap.Config.ARGB_8888, true);
+            outerloop: for (int y = 0; y < image.getHeight(); y++) {
+                for (int x = 0; x < image.getWidth(); x++) {
+                    if (messageIndex >= binaryMessage.length()) {
+                        break outerloop;
+                    }
+
+                    int pixel = mutableBitmap.getPixel(x, y);
+                    char bit = binaryMessage.charAt(messageIndex);
+
+                    if (bit == '1') {
+                        pixel |= 1;
+                    } else {
+                        pixel &= ~1;
+                    }
+
+                    mutableBitmap.setPixel(x, y, pixel);
+                    messageIndex++;
+                }
+            }
+
+            // Returning the encoded image
+            return mutableBitmap;
+
+        } catch (Exception e) {
+            throw new Exception("Error during encoding: " + e.getMessage());
         }
 
-        // Log.d("y", "mutableBitmap encode:" + mutableBitmap);
-        // Returning the encoded image
-        return mutableBitmap;
     }
 
     private String saveEncodedImage(Bitmap encodedImage, String originalImageUri) throws Exception {
-
         // Extract the original filename from the imageUri:
         String originalFileName = new File(originalImageUri).getName();
 
@@ -163,9 +183,9 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void decode(String imageUri, Callback callback) {
+    public void decode(String imageUri, String encryptionKey, Callback callback) {
         try {
-            String decodedMessage = decodeMessageFromImage(imageUri);
+            String decodedMessage = decodeMessageFromImage(imageUri, encryptionKey);
             // Log.d("y", "image uri decode:" + imageUri);
             callback.invoke(decodedMessage);
         } catch (Exception e) {
@@ -173,40 +193,65 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
         }
     }
 
-    private String decodeMessageFromImage(String imageUri) throws Exception {
-        Bitmap image = BitmapFactory.decodeFile(imageUri);
-        StringBuilder binaryMessage = new StringBuilder();
+    private String decodeMessageFromImage(String imageUri, String encryptionKey) throws Exception {
+        try {
+            Bitmap image = BitmapFactory.decodeFile(imageUri);
+            StringBuilder binaryMessage = new StringBuilder();
 
-        // 1. Extract the length of the message
-        StringBuilder binaryLength = new StringBuilder();
-        for (int i = 0; i < 16; i++) {
-            int pixel = image.getPixel(i % image.getWidth(), i / image.getWidth());
-            binaryLength.append(pixel & 1);
+            // Extract the length of the message
+            StringBuilder binaryLength = new StringBuilder();
+            for (int i = 0; i < 16; i++) {
+                int pixel = image.getPixel(i % image.getWidth(), i / image.getWidth());
+                binaryLength.append(pixel & 1);
+            }
+            int messageLength = Integer.parseInt(binaryLength.toString(), 2);
+
+            // Extract the actual message
+            // You've already extracted the 16 bits for the message length, so start from
+            // index 16
+            // and remember, for each character of the message, you're extracting 8 bits
+            for (int i = 16; i < 16 + (messageLength * 8); i++) {
+                int pixel = image.getPixel(i % image.getWidth(), i / image.getWidth());
+                binaryMessage.append(pixel & 1);
+            }
+
+            Log.d("Decode", "binaryMessage Decode:" + binaryMessage);
+
+            // // Convert the binary message back to text
+            // StringBuilder textMessage = new StringBuilder();
+            // for (int i = 0; i < binaryMessage.length(); i += 8) { // Use 8 since each
+            // char is represented by 8 bits
+            // String byteString = binaryMessage.substring(i, i + 8); // Extract each 8-bit
+            // sequence
+            // int charCode = Integer.parseInt(byteString, 2);
+            // textMessage.append((char) charCode);
+            // }
+
+            // Log.d("Decode", "textMessage Decode:" + textMessage);
+
+            // return textMessage.toString();
+
+            // Convert binary message to encrypted bytes
+            byte[] encryptedBytes = new byte[binaryMessage.length() / 8];
+            for (int i = 0; i < binaryMessage.length(); i += 8) {
+                String byteString = binaryMessage.substring(i, i + 8);
+                encryptedBytes[i / 8] = (byte) Integer.parseInt(byteString, 2);
+            }
+
+            // Decrypt the message using AES
+            Cipher cipher = Cipher.getInstance("AES");
+            Key key = new SecretKeySpec(encryptionKey.getBytes(), "AES");
+            cipher.init(Cipher.DECRYPT_MODE, key);
+            byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
+
+            Log.d("Decode", "decryptedBytes:" + decryptedBytes);
+
+            return new String(decryptedBytes);
+
+        } catch (Exception e) {
+            throw new Exception("Error during decoding: " + e.getMessage());
         }
-        int messageLength = Integer.parseInt(binaryLength.toString(), 2);
 
-        // 2. Extract the actual message
-        // You've already extracted the 16 bits for the message length, so start from
-        // index 16
-        // and remember, for each character of the message, you're extracting 8 bits
-        for (int i = 16; i < 16 + (messageLength * 8); i++) {
-            int pixel = image.getPixel(i % image.getWidth(), i / image.getWidth());
-            binaryMessage.append(pixel & 1);
-        }
-
-        Log.d("Decode", "binaryMessage Decode:" + binaryMessage);
-
-        // Convert the binary message back to text
-        StringBuilder textMessage = new StringBuilder();
-        for (int i = 0; i < binaryMessage.length(); i += 8) { // Use 8 since each char is represented by 8 bits
-            String byteString = binaryMessage.substring(i, i + 8); // Extract each 8-bit sequence
-            int charCode = Integer.parseInt(byteString, 2);
-            textMessage.append((char) charCode);
-        }
-
-        Log.d("Decode", "textMessage Decode:" + textMessage);
-
-        return textMessage.toString();
     }
 
     // @ReactMethod
