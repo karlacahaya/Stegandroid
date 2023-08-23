@@ -24,10 +24,15 @@ import android.provider.MediaStore;
 import android.net.Uri;
 
 //imports for AES encryption and key management
-import javax.crypto.Cipher;
-import javax.crypto.spec.SecretKeySpec;
-import java.security.Key;
-import java.util.Base64;
+// import javax.crypto.Cipher;
+// import javax.crypto.spec.SecretKeySpec;
+// import java.security.Key;
+// import java.util.Base64;
+
+//imports module to include PBKDF
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
+import java.security.spec.KeySpec;
 
 public class LSBSteganographyModule extends ReactContextBaseJavaModule {
     private final ReactApplicationContext reactContext;
@@ -44,9 +49,9 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void encode(String imageUri, String message, String encryptionKey, Callback callback) {
+    public void encode(String imageUri, String message, Callback callback) {
         try {
-            Bitmap encodedImage = encodeImageWithMessage(imageUri, encryptionKey, message);
+            Bitmap encodedImage = encodeImageWithMessage(imageUri, message);
             String savedImagePath = saveEncodedImage(encodedImage, imageUri);
             refreshGallery(savedImagePath);
             callback.invoke(savedImagePath);
@@ -55,7 +60,7 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
         }
     }
 
-    private Bitmap encodeImageWithMessage(String imageUri, String message, String encryptionKey) throws Exception {
+    private Bitmap encodeImageWithMessage(String imageUri, String message) throws Exception {
         try {
             // Log the image type before attempting to decode
             BitmapFactory.Options options = new BitmapFactory.Options();
@@ -85,20 +90,6 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
 
             Log.d("Encode", "binaryMessage:" + binaryMessage);
             Log.d("Encode", "message:" + message);
-
-            // Encrypt the binary message using AES
-            Cipher cipher = Cipher.getInstance("AES");
-            Key key = new SecretKeySpec(encryptionKey.getBytes(), "AES");
-            cipher.init(Cipher.ENCRYPT_MODE, key);
-            byte[] encryptedBytes = cipher.doFinal(binaryMessage.toString().getBytes());
-
-            // Convert encrypted bytes to a binary string
-            StringBuilder encryptedBinaryMessage = new StringBuilder();
-            for (byte b : encryptedBytes) {
-                encryptedBinaryMessage.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
-            }
-
-            Log.d("Encode", "encryptedBinaryMessage:" + encryptedBinaryMessage);
 
             // Embed the binary message into the image's pixels
             int messageIndex = 0;
@@ -170,7 +161,7 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
             encodedImage.compress(Bitmap.CompressFormat.PNG, 100, mediaStoreStream);
         }
 
-        Log.d("y", "----------------------DECODE LOGS----------------------");
+        Log.d("y", "----------------------ENCODE LOGS----------------------");
 
         return savedImageUri.toString();
     }
@@ -183,9 +174,9 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void decode(String imageUri, String encryptionKey, Callback callback) {
+    public void decode(String imageUri, Callback callback) {
         try {
-            String decodedMessage = decodeMessageFromImage(imageUri, encryptionKey);
+            String decodedMessage = decodeMessageFromImage(imageUri);
             // Log.d("y", "image uri decode:" + imageUri);
             callback.invoke(decodedMessage);
         } catch (Exception e) {
@@ -193,7 +184,7 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
         }
     }
 
-    private String decodeMessageFromImage(String imageUri, String encryptionKey) throws Exception {
+    private String decodeMessageFromImage(String imageUri) throws Exception {
         try {
             Bitmap image = BitmapFactory.decodeFile(imageUri);
             StringBuilder binaryMessage = new StringBuilder();
@@ -215,38 +206,37 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
                 binaryMessage.append(pixel & 1);
             }
 
-            Log.d("Decode", "binaryMessage Decode:" + binaryMessage);
+            Log.d("Decode", "binaryMessage:" + binaryMessage);
 
-            // // Convert the binary message back to text
-            // StringBuilder textMessage = new StringBuilder();
-            // for (int i = 0; i < binaryMessage.length(); i += 8) { // Use 8 since each
-            // char is represented by 8 bits
-            // String byteString = binaryMessage.substring(i, i + 8); // Extract each 8-bit
-            // sequence
-            // int charCode = Integer.parseInt(byteString, 2);
-            // textMessage.append((char) charCode);
-            // }
-
-            // Log.d("Decode", "textMessage Decode:" + textMessage);
-
-            // return textMessage.toString();
-
-            // Convert binary message to encrypted bytes
-            byte[] encryptedBytes = new byte[binaryMessage.length() / 8];
-            for (int i = 0; i < binaryMessage.length(); i += 8) {
-                String byteString = binaryMessage.substring(i, i + 8);
-                encryptedBytes[i / 8] = (byte) Integer.parseInt(byteString, 2);
+            // Convert the binary message back to text
+            StringBuilder textMessage = new StringBuilder();
+            for (int i = 0; i < binaryMessage.length(); i += 8) { // Use 8 since each char is represented by 8 bits
+                String byteString = binaryMessage.substring(i, i + 8); // Extract each 8-bit sequence
+                int charCode = Integer.parseInt(byteString, 2);
+                textMessage.append((char) charCode);
             }
 
-            // Decrypt the message using AES
-            Cipher cipher = Cipher.getInstance("AES");
-            Key key = new SecretKeySpec(encryptionKey.getBytes(), "AES");
-            cipher.init(Cipher.DECRYPT_MODE, key);
-            byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
+            Log.d("Decode", "textMessage:" + textMessage);
 
-            Log.d("Decode", "decryptedBytes:" + decryptedBytes);
+            return textMessage.toString();
 
-            return new String(decryptedBytes);
+            // AES
+            // Convert binary message to encrypted bytes
+            // byte[] encryptedBytes = new byte[binaryMessage.length() / 8];
+            // for (int i = 0; i < binaryMessage.length(); i += 8) {
+            // String byteString = binaryMessage.substring(i, i + 8);
+            // encryptedBytes[i / 8] = (byte) Integer.parseInt(byteString, 2);
+            // }
+
+            // // Decrypt the message using AES
+            // Cipher cipher = Cipher.getInstance("AES");
+            // Key key = new SecretKeySpec(encryptionKey.getBytes(), "AES");
+            // cipher.init(Cipher.DECRYPT_MODE, key);
+            // byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
+
+            // Log.d("Decode", "decryptedBytes:" + decryptedBytes);
+
+            // return new String(decryptedBytes);
 
         } catch (Exception e) {
             throw new Exception("Error during decoding: " + e.getMessage());
@@ -358,3 +348,86 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
     // }
     // }
 }
+
+// aes
+
+// private Bitmap encodeImageWithMessageAndAes(String imageUri, String message,
+// String encryptionKey) throws Exception {
+// try {
+// // Log the image type before attempting to decode
+// BitmapFactory.Options options = new BitmapFactory.Options();
+// options.inJustDecodeBounds = true; // Avoid memory allocation here
+// BitmapFactory.decodeFile(imageUri, options);
+// Log.d("LSBSteganography", "Image URI: " + imageUri);
+// Log.d("LSBSteganography", "Image type: " + options.outMimeType);
+
+// Bitmap image = BitmapFactory.decodeFile(imageUri);
+
+// // Check if the image can contain the message
+// int imageSize = image.getWidth() * image.getHeight();
+// if (message.length() > imageSize) {
+// throw new Exception("Error: Message too long for this image");
+// }
+
+// // Convert message length to binary string (with length prefix)
+// String binaryLength = String.format("%16s",
+// Integer.toBinaryString(message.length())).replace(' ', '0'); // 16bitslength
+// // Log.d("y", "binaryLength encode:" + binaryLength);
+
+// StringBuilder binaryMessage = new StringBuilder(binaryLength);
+// for (char c : message.toCharArray()) {
+// String binString = String.format("%8s", Integer.toBinaryString(c)).replace('
+// ', '0'); // 8 bits for a
+// // char
+// binaryMessage.append(binString);
+// }
+
+// Log.d("Encode", "binaryMessage:" + binaryMessage);
+// Log.d("Encode", "message:" + message);
+
+// // Encrypt the binary message using AES
+// Cipher cipher = Cipher.getInstance("AES");
+// Key key = new SecretKeySpec(encryptionKey.getBytes(), "AES");
+// cipher.init(Cipher.ENCRYPT_MODE, key);
+// byte[] encryptedBytes = cipher.doFinal(binaryMessage.toString().getBytes());
+
+// // Convert encrypted bytes to a binary string
+// StringBuilder encryptedBinaryMessage = new StringBuilder();
+// for (byte b : encryptedBytes) {
+// encryptedBinaryMessage.append(String.format("%8s", Integer.toBinaryString(b &
+// 0xFF)).replace(' ', '0'));
+// }
+
+// Log.d("Encode", "encryptedBinaryMessage:" + encryptedBinaryMessage);
+
+// // Embed the binary message into the image's pixels
+// int messageIndex = 0;
+// Bitmap mutableBitmap = image.copy(Bitmap.Config.ARGB_8888, true);
+// outerloop: for (int y = 0; y < image.getHeight(); y++) {
+// for (int x = 0; x < image.getWidth(); x++) {
+// if (messageIndex >= encryptedBinaryMessage.length()) {
+// break outerloop;
+// }
+
+// int pixel = mutableBitmap.getPixel(x, y);
+// char bit = encryptedBinaryMessage.charAt(messageIndex);
+
+// if (bit == '1') {
+// pixel |= 1;
+// } else {
+// pixel &= ~1;
+// }
+
+// mutableBitmap.setPixel(x, y, pixel);
+// messageIndex++;
+// }
+// }
+
+// // Returning the encoded image
+// return mutableBitmap;
+
+// } catch (Exception e) {
+// throw new Exception("Error during encoding: " + e.getMessage());
+// }
+
+// }

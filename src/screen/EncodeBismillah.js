@@ -100,8 +100,8 @@ const {LSBSteganography} = NativeModules;
 
 const EncodeBismillah = () => {
   const [message, setMessage] = React.useState('');
-  const [textKey, setTextKey] = React.useState('');
-  const [useAesEncryption, setUseAesEncryption] = useState(false); // State for the toggle switch
+  // const [textKey, setTextKey] = React.useState('');
+  // const [useAesEncryption, setUseAesEncryption] = useState(false); // State for the toggle switch
   const [originalImageUri, setOriginalImageUri] = useState(null);
   const [encodedImageUri, setEncodedImageUri] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -162,36 +162,20 @@ const EncodeBismillah = () => {
 
     try {
       const imagePath = originalImageUri.replace('file://', '');
+      console.log('original image path:', originalImageUri);
 
-      // Determine whether to use AES encryption based on the toggle switch
-      if (useAesEncryption && textKey) {
-        LSBSteganography.encode(imagePath, message, textKey, result => {
-          setIsLoading(false);
+      LSBSteganography.encode(imagePath, message, result => {
+        setIsLoading(false);
 
-          if (result.startsWith('Error:')) {
-            setErrorMessage(result);
-            setIsErrorModalVisible(true);
-          } else {
-            console.log('Encoded image path:', result);
-            setEncodedImageUri(result);
-            setIsSuccessModalVisible(true);
-          }
-        });
-      } else {
-        // No AES encryption
-        LSBSteganography.encode(imagePath, message, null, result => {
-          setIsLoading(false);
-
-          if (result.startsWith('Error:')) {
-            setErrorMessage(result);
-            setIsErrorModalVisible(true);
-          } else {
-            console.log('Encoded image path:', result);
-            setEncodedImageUri(result);
-            setIsSuccessModalVisible(true);
-          }
-        });
-      }
+        if (result.startsWith('Error:')) {
+          setErrorMessage(result);
+          setIsErrorModalVisible(true);
+        } else {
+          console.log('Encoded image path:', result);
+          setEncodedImageUri(result);
+          setIsSuccessModalVisible(true);
+        }
+      });
     } catch (error) {
       setIsLoading(false);
       setErrorMessage(error.message);
@@ -228,7 +212,7 @@ const EncodeBismillah = () => {
           <CameraPermissionButton onPress={handleOpenCamera} />
         )}
 
-        {!encodedImageUri && (
+        {/* {!encodedImageUri && (
           <>
             <View style={styles.switchContainer}>
               <Text>Use AES Encryption:</Text>
@@ -238,7 +222,7 @@ const EncodeBismillah = () => {
               />
             </View>
           </>
-        )}
+        )} */}
 
         {!encodedImageUri && (
           <>
@@ -310,3 +294,50 @@ const EncodeBismillah = () => {
 };
 
 export default EncodeBismillah;
+
+// const handleEncodeImage = async () => {
+  //   if (!originalImageUri || !message) {
+  //     console.warn('Please select an image and enter a message');
+  //     return;
+  //   }
+
+  //   setIsLoading(true);
+
+  //   try {
+  //     const imagePath = originalImageUri.replace('file://', '');
+
+  //     // Determine whether to use AES encryption based on the toggle switch
+  //     if (useAesEncryption && textKey) {
+  //       LSBSteganography.encode(imagePath, message, textKey, result => {
+  //         setIsLoading(false);
+
+  //         if (result.startsWith('Error:')) {
+  //           setErrorMessage(result);
+  //           setIsErrorModalVisible(true);
+  //         } else {
+  //           console.log('Encoded image path:', result);
+  //           setEncodedImageUri(result);
+  //           setIsSuccessModalVisible(true);
+  //         }
+  //       });
+  //     } else {
+  //       // No AES encryption
+  //       LSBSteganography.encode(imagePath, message, null, result => {
+  //         setIsLoading(false);
+
+  //         if (result.startsWith('Error:')) {
+  //           setErrorMessage(result);
+  //           setIsErrorModalVisible(true);
+  //         } else {
+  //           console.log('Encoded image path:', result);
+  //           setEncodedImageUri(result);
+  //           setIsSuccessModalVisible(true);
+  //         }
+  //       });
+  //     }
+  //   } catch (error) {
+  //     setIsLoading(false);
+  //     setErrorMessage(error.message);
+  //     setIsErrorModalVisible(true);
+  //   }
+  // };
