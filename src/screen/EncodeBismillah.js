@@ -17,8 +17,8 @@ import ImagePicker from 'react-native-image-crop-picker';
 import GalleryPermissionButton from '../component/buttons/GalleryPermissions';
 import CameraPermissionButton from '../component/buttons/CameraPermissions';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
-import {CameraRoll} from '@react-native-camera-roll/camera-roll';
-import SaveToGalleryButton from '../component/buttons/SaveToGallery';
+// import {CameraRoll} from '@react-native-camera-roll/camera-roll';
+// import SaveToGalleryButton from '../component/buttons/SaveToGallery';
 
 const styles = StyleSheet.create({
   container: {
@@ -101,8 +101,9 @@ const EncodeBismillah = () => {
   const [text, setText] = React.useState('');
   const [originalImageUri, setOriginalImageUri] = useState(null);
   const [encodedImageUri, setEncodedImageUri] = useState(null);
-  const [encodedImagePath, setEncodedImagePath] = useState(null)
+  const [encodedImagePath, setEncodedImagePath] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
   const [isErrorModalVisible, setIsErrorModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -163,7 +164,8 @@ const EncodeBismillah = () => {
           setIsErrorModalVisible(true);
         } else {
           console.log('Encoded image path:', result);
-          setEncodedImageUri('file://' + result);
+          setEncodedImageUri(result);
+          setIsSuccessModalVisible(true);
         }
       });
     } catch (error) {
@@ -173,7 +175,7 @@ const EncodeBismillah = () => {
     }
   };
 
-  console.log('ha', encodedImageUri)
+  // console.log('ha', encodedImageUri)
 
   return (
     <SafeAreaView style={styles.container}>
@@ -223,7 +225,7 @@ const EncodeBismillah = () => {
           </>
         )}
 
-        <SaveToGalleryButton tag={encodedImageUri} />
+        {/* <SaveToGalleryButton tag={encodedImageUri} /> */}
 
         {isLoading && <ActivityIndicator size="large" color="#0000ff" />}
 
@@ -232,15 +234,34 @@ const EncodeBismillah = () => {
           transparent={true}
           visible={isErrorModalVisible}
           onRequestClose={() => {
-            setIsErrorModalVisible(false);
+          setIsErrorModalVisible(false);
           }}>
           <View style={styles.centeredView}>
             <View style={styles.modalView}>
               <Text style={styles.modalText}>{errorMessage}</Text>
               <TouchableOpacity
-                style={{...styles.button1, backgroundColor: '#2196F3'}}
+                style={{...styles.button1, backgroundColor: '#f05146'}}
                 onPress={() => setIsErrorModalVisible(false)}>
-                <Text style={styles.textStyle}>Hide Modal</Text>
+                <Text style={styles.textStyle}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={isSuccessModalVisible}
+          onRequestClose={() => {
+          setIsSuccessModalVisible(false);
+          }}>
+          <View style={styles.centeredView}>
+            <View style={styles.modalView}>
+              <Text style={styles.modalText}>Encoded image has been saved!</Text>
+              <TouchableOpacity
+                style={{...styles.button1, backgroundColor: '#5f5ae8'}}
+                onPress={() => setIsSuccessModalVisible(false)}>
+                <Text style={styles.textStyle}>Close</Text>
               </TouchableOpacity>
             </View>
           </View>
