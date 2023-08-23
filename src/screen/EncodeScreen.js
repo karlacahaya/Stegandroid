@@ -15,7 +15,6 @@ import { decode } from 'base-64'
 import Exif from 'react-native-exif';
 import base64 from 'react-native-base64'
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,

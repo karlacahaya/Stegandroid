@@ -1,6 +1,5 @@
 package com.stegandroid;
 
-// import com.oguzhnatly.rnimagemanipulator.RNImageManipulatorPackage;
 import com.facebook.react.ReactActivity;
 import com.facebook.react.ReactActivityDelegate;
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint;
@@ -23,10 +22,6 @@ public class MainActivity extends ReactActivity {
     super.onCreate(null);
   }
 
-  // @Override
-  // protected void RNImageManipulatorPackage() {
-  //   getPackages();
-  // }
 
   /**
    * Returns the instance of the {@link ReactActivityDelegate}. Here we use a util class {@link
