@@ -34,8 +34,20 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 import java.security.spec.KeySpec;
 
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+// import javax.crypto.SecretKeySpec;
+import java.security.SecureRandom;
+// import javax.crypto.spec.PBEKeySpec;
+// import javax.crypto.SecretKeyFactory;
+// import java.security.spec.KeySpec;
+
+import javax.crypto.spec.SecretKeySpec;
+import java.util.Base64;
+
 public class LSBSteganographyModule extends ReactContextBaseJavaModule {
     private final ReactApplicationContext reactContext;
+    private byte[] keyBytes; // Declare keyBytes at the class level
 
     public LSBSteganographyModule(@Nullable ReactApplicationContext reactContext) {
         super(reactContext);
@@ -48,10 +60,34 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
         return "LSBSteganography";
     }
 
+    private byte[] generateSalt() {
+        SecureRandom random = new SecureRandom();
+        byte[] salt = new byte[16];
+        random.nextBytes(salt);
+        return salt;
+    }
+
     @ReactMethod
-    public void encode(String imageUri, String message, Callback callback) {
+    public void encode(String imageUri, String message, String password, boolean usePbkdf, Callback callback) {
         try {
-            Bitmap encodedImage = encodeImageWithMessage(imageUri, message);
+            Bitmap encodedImage;
+            if (usePbkdf && !password.isEmpty()) {
+                byte[] salt = generateSalt(); // You need to implement this method to generate a random salt
+                SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
+                KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 65536, 256); // You can adjust iteration
+                                                                                         // count and key length
+                SecretKey secretKey = factory.generateSecret(spec);
+                byte[] keyBytes = secretKey.getEncoded();
+
+                encodedImage = encodeImageWithMessage(imageUri, message, keyBytes);
+                String savedImagePath = saveEncodedImage(encodedImage, imageUri);
+                refreshGallery(savedImagePath);
+                callback.invoke(savedImagePath);
+
+            } else {
+                encodedImage = encodeImageWithMessage(imageUri, message);
+            }
+
             String savedImagePath = saveEncodedImage(encodedImage, imageUri);
             refreshGallery(savedImagePath);
             callback.invoke(savedImagePath);
@@ -60,7 +96,7 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
         }
     }
 
-    private Bitmap encodeImageWithMessage(String imageUri, String message) throws Exception {
+    private Bitmap encodeImageWithMessage(String imageUri, String message, byte[]... keyBytes) throws Exception {
         try {
             // Log the image type before attempting to decode
             BitmapFactory.Options options = new BitmapFactory.Options();
@@ -77,50 +113,56 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
                 throw new Exception("Error: Message too long for this image");
             }
 
-            // Convert message length to binary string (with length prefix)
-            String binaryLength = String.format("%16s", Integer.toBinaryString(message.length())).replace(' ', '0'); // 16bitslength
-            // Log.d("y", "binaryLength encode:" + binaryLength);
+            // Encrypt the message using AES if keyBytes are provided
+            if (keyBytes.length > 0) {
+                Cipher cipher = Cipher.getInstance("AES");
+                SecretKeySpec keySpec = new SecretKeySpec(keyBytes[0], "AES");
+                cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+                byte[] encryptedMessage = cipher.doFinal(message.getBytes());
 
-            StringBuilder binaryMessage = new StringBuilder(binaryLength);
-            for (char c : message.toCharArray()) {
-                String binString = String.format("%8s", Integer.toBinaryString(c)).replace(' ', '0'); // 8 bits for a
-                                                                                                      // char
-                binaryMessage.append(binString);
-            }
-
-            Log.d("Encode", "binaryMessage:" + binaryMessage);
-            Log.d("Encode", "message:" + message);
-
-            // Embed the binary message into the image's pixels
-            int messageIndex = 0;
-            Bitmap mutableBitmap = image.copy(Bitmap.Config.ARGB_8888, true);
-            outerloop: for (int y = 0; y < image.getHeight(); y++) {
-                for (int x = 0; x < image.getWidth(); x++) {
-                    if (messageIndex >= binaryMessage.length()) {
-                        break outerloop;
-                    }
-
-                    int pixel = mutableBitmap.getPixel(x, y);
-                    char bit = binaryMessage.charAt(messageIndex);
-
-                    if (bit == '1') {
-                        pixel |= 1;
-                    } else {
-                        pixel &= ~1;
-                    }
-
-                    mutableBitmap.setPixel(x, y, pixel);
-                    messageIndex++;
+                // Convert the encrypted message to binary string
+                StringBuilder binaryMessage = new StringBuilder();
+                for (byte b : encryptedMessage) {
+                    binaryMessage.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
                 }
-            }
 
-            // Returning the encoded image
-            return mutableBitmap;
+                Log.d("Encode", "binaryMessage:" + binaryMessage);
+                Log.d("Encode", "message:" + message);
+
+                // Embed the binary message into the image's pixels
+                int messageIndex = 0;
+                Bitmap mutableBitmap = image.copy(Bitmap.Config.ARGB_8888, true);
+                outerloop: for (int y = 0; y < image.getHeight(); y++) {
+                    for (int x = 0; x < image.getWidth(); x++) {
+                        if (messageIndex >= binaryMessage.length()) {
+                            break outerloop;
+                        }
+
+                        int pixel = mutableBitmap.getPixel(x, y);
+                        char bit = binaryMessage.charAt(messageIndex);
+
+                        if (bit == '1') {
+                            pixel |= 1;
+                        } else {
+                            pixel &= ~1;
+                        }
+
+                        mutableBitmap.setPixel(x, y, pixel);
+                        messageIndex++;
+                    }
+                }
+
+                // Returning the encoded image
+                return mutableBitmap;
+            } else {
+                // Handle the case where keyBytes are not provided (you can decide how to handle
+                // this)
+                throw new Exception("KeyBytes not provided for encryption");
+            }
 
         } catch (Exception e) {
             throw new Exception("Error during encoding: " + e.getMessage());
         }
-
     }
 
     private String saveEncodedImage(Bitmap encodedImage, String originalImageUri) throws Exception {
@@ -174,17 +216,24 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void decode(String imageUri, Callback callback) {
+    public void decode(String imageUri, String password, boolean usePbkdf, Callback callback) {
         try {
-            String decodedMessage = decodeMessageFromImage(imageUri);
-            // Log.d("y", "image uri decode:" + imageUri);
+            if (usePbkdf && !password.isEmpty()) {
+                byte[] salt = generateSalt();
+                SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
+                KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 65536, 256);
+                SecretKey secretKey = factory.generateSecret(spec);
+                keyBytes = secretKey.getEncoded(); // Store keyBytes at the class level
+            }
+
+            String decodedMessage = decodeMessageFromImage(imageUri, keyBytes);
             callback.invoke(decodedMessage);
         } catch (Exception e) {
             callback.invoke("Error: " + e.getMessage());
         }
     }
 
-    private String decodeMessageFromImage(String imageUri) throws Exception {
+    private String decodeMessageFromImage(String imageUri, byte[] keyBytes) throws Exception {
         try {
             Bitmap image = BitmapFactory.decodeFile(imageUri);
             StringBuilder binaryMessage = new StringBuilder();
@@ -216,33 +265,48 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
                 textMessage.append((char) charCode);
             }
 
+            if (keyBytes != null) {
+                // Decrypt the text message using the provided keyBytes
+                Cipher cipher = Cipher.getInstance("AES");
+                SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
+                cipher.init(Cipher.DECRYPT_MODE, keySpec);
+
+                byte[] encryptedBytes = new byte[textMessage.length()];
+                for (int i = 0; i < textMessage.length(); i++) {
+                    encryptedBytes[i] = (byte) textMessage.charAt(i);
+                }
+
+                byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
+                textMessage = new StringBuilder(new String(decryptedBytes));
+            }
+
             Log.d("Decode", "textMessage:" + textMessage);
 
             return textMessage.toString();
-
-            // AES
-            // Convert binary message to encrypted bytes
-            // byte[] encryptedBytes = new byte[binaryMessage.length() / 8];
-            // for (int i = 0; i < binaryMessage.length(); i += 8) {
-            // String byteString = binaryMessage.substring(i, i + 8);
-            // encryptedBytes[i / 8] = (byte) Integer.parseInt(byteString, 2);
-            // }
-
-            // // Decrypt the message using AES
-            // Cipher cipher = Cipher.getInstance("AES");
-            // Key key = new SecretKeySpec(encryptionKey.getBytes(), "AES");
-            // cipher.init(Cipher.DECRYPT_MODE, key);
-            // byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
-
-            // Log.d("Decode", "decryptedBytes:" + decryptedBytes);
-
-            // return new String(decryptedBytes);
 
         } catch (Exception e) {
             throw new Exception("Error during decoding: " + e.getMessage());
         }
 
     }
+
+    // AES
+    // Convert binary message to encrypted bytes
+    // byte[] encryptedBytes = new byte[binaryMessage.length() / 8];
+    // for (int i = 0; i < binaryMessage.length(); i += 8) {
+    // String byteString = binaryMessage.substring(i, i + 8);
+    // encryptedBytes[i / 8] = (byte) Integer.parseInt(byteString, 2);
+    // }
+
+    // // Decrypt the message using AES
+    // Cipher cipher = Cipher.getInstance("AES");
+    // Key key = new SecretKeySpec(encryptionKey.getBytes(), "AES");
+    // cipher.init(Cipher.DECRYPT_MODE, key);
+    // byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
+
+    // Log.d("Decode", "decryptedBytes:" + decryptedBytes);
+
+    // return new String(decryptedBytes);
 
     // @ReactMethod
     // public void encode(String imageUri, String message, Callback callback) {

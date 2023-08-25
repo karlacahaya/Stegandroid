@@ -18,6 +18,8 @@ import ImagePicker from 'react-native-image-crop-picker';
 import GalleryPermissionButton from '../component/buttons/GalleryPermissions';
 import CameraPermissionButton from '../component/buttons/CameraPermissions';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
+// import CryptoJS from 'react-native-crypto-js';
+// import crypto from 'react-native-crypto';
 // import {CameraRoll} from '@react-native-camera-roll/camera-roll';
 // import SaveToGalleryButton from '../component/buttons/SaveToGallery';
 
@@ -99,8 +101,8 @@ const styles = StyleSheet.create({
 const {LSBSteganography} = NativeModules;
 
 const EncodeBismillah = () => {
+  const [textKey, setTextKey] = React.useState('');
   const [message, setMessage] = React.useState('');
-  // const [textKey, setTextKey] = React.useState('');
   // const [useAesEncryption, setUseAesEncryption] = useState(false); // State for the toggle switch
   const [originalImageUri, setOriginalImageUri] = useState(null);
   const [encodedImageUri, setEncodedImageUri] = useState(null);
@@ -142,14 +144,15 @@ const EncodeBismillah = () => {
     });
   };
 
-  const onChangeTextKey = newText => {
-    setTextKey(newText);
-    console.log('Key:', newText);
+  const onChangeTextKey = newTextKey => {
+    setTextKey(newTextKey);
+    // setUseAesEncryption(true);
+    // console.log('Key:', newTextKey);
   };
 
   const onChangeMessage = newText => {
     setMessage(newText);
-    console.log('Message:', newText);
+    // console.log('Message:', newText);
   };
 
   const handleEncodeImage = async () => {
@@ -161,21 +164,36 @@ const EncodeBismillah = () => {
     setIsLoading(true);
 
     try {
+      // Generate a key from the user's password using PBKDF
+      console.log('Password', textKey)
+      // const password = textKey; // Replace with user's input
+      // const salt = crypto.randomBytes(16); // Generate a random salt
+      // const keyBytes = CryptoJS.PBKDF2(password, salt, {
+      //   keySize: 256 / 32,
+      //   iterations: 1000,
+      // });
+
       const imagePath = originalImageUri.replace('file://', '');
       console.log('original image path:', originalImageUri);
 
-      LSBSteganography.encode(imagePath, message, result => {
-        setIsLoading(false);
+      // Pass keyBytes as an array
+      LSBSteganography.encode(
+        imagePath,
+        message,
+        textKey ? textKey : null,
+        result => {
+          setIsLoading(false);
 
-        if (result.startsWith('Error:')) {
-          setErrorMessage(result);
-          setIsErrorModalVisible(true);
-        } else {
-          console.log('Encoded image path:', result);
-          setEncodedImageUri(result);
-          setIsSuccessModalVisible(true);
-        }
-      });
+          if (result.startsWith('Error:')) {
+            setErrorMessage(result);
+            setIsErrorModalVisible(true);
+          } else {
+            console.log('Encoded image path:', result);
+            setEncodedImageUri(result);
+            setIsSuccessModalVisible(true);
+          }
+        },
+      );
     } catch (error) {
       setIsLoading(false);
       setErrorMessage(error.message);
@@ -212,19 +230,18 @@ const EncodeBismillah = () => {
           <CameraPermissionButton onPress={handleOpenCamera} />
         )}
 
-        {/* {!encodedImageUri && (
+        {!encodedImageUri && originalImageUri && (
           <>
-            <View style={styles.switchContainer}>
-              <Text>Use AES Encryption:</Text>
-              <Switch
-                value={onChangeTextKey}
-                onValueChange={newValue => setUseAesEncryption(newValue)}
-              />
-            </View>
+            <TextInput
+              style={styles.input}
+              onChangeText={onChangeTextKey}
+              value={textKey}
+              placeholder="Password (Optional)"
+            />
           </>
-        )} */}
+        )}
 
-        {!encodedImageUri && (
+        {!encodedImageUri && originalImageUri && (
           <>
             <TextInput
               style={styles.input}
@@ -235,7 +252,7 @@ const EncodeBismillah = () => {
           </>
         )}
 
-        {!encodedImageUri && (
+        {!encodedImageUri && originalImageUri && (
           <>
             <TouchableOpacity onPress={handleEncodeImage} style={styles.button}>
               <Text style={styles.buttonText}>Encode</Text>
@@ -296,48 +313,48 @@ const EncodeBismillah = () => {
 export default EncodeBismillah;
 
 // const handleEncodeImage = async () => {
-  //   if (!originalImageUri || !message) {
-  //     console.warn('Please select an image and enter a message');
-  //     return;
-  //   }
+//   if (!originalImageUri || !message) {
+//     console.warn('Please select an image and enter a message');
+//     return;
+//   }
 
-  //   setIsLoading(true);
+//   setIsLoading(true);
 
-  //   try {
-  //     const imagePath = originalImageUri.replace('file://', '');
+//   try {
+//     const imagePath = originalImageUri.replace('file://', '');
 
-  //     // Determine whether to use AES encryption based on the toggle switch
-  //     if (useAesEncryption && textKey) {
-  //       LSBSteganography.encode(imagePath, message, textKey, result => {
-  //         setIsLoading(false);
+//     // Determine whether to use AES encryption based on the toggle switch
+//     if (useAesEncryption && textKey) {
+//       LSBSteganography.encode(imagePath, message, textKey, result => {
+//         setIsLoading(false);
 
-  //         if (result.startsWith('Error:')) {
-  //           setErrorMessage(result);
-  //           setIsErrorModalVisible(true);
-  //         } else {
-  //           console.log('Encoded image path:', result);
-  //           setEncodedImageUri(result);
-  //           setIsSuccessModalVisible(true);
-  //         }
-  //       });
-  //     } else {
-  //       // No AES encryption
-  //       LSBSteganography.encode(imagePath, message, null, result => {
-  //         setIsLoading(false);
+//         if (result.startsWith('Error:')) {
+//           setErrorMessage(result);
+//           setIsErrorModalVisible(true);
+//         } else {
+//           console.log('Encoded image path:', result);
+//           setEncodedImageUri(result);
+//           setIsSuccessModalVisible(true);
+//         }
+//       });
+//     } else {
+//       // No AES encryption
+//       LSBSteganography.encode(imagePath, message, null, result => {
+//         setIsLoading(false);
 
-  //         if (result.startsWith('Error:')) {
-  //           setErrorMessage(result);
-  //           setIsErrorModalVisible(true);
-  //         } else {
-  //           console.log('Encoded image path:', result);
-  //           setEncodedImageUri(result);
-  //           setIsSuccessModalVisible(true);
-  //         }
-  //       });
-  //     }
-  //   } catch (error) {
-  //     setIsLoading(false);
-  //     setErrorMessage(error.message);
-  //     setIsErrorModalVisible(true);
-  //   }
-  // };
+//         if (result.startsWith('Error:')) {
+//           setErrorMessage(result);
+//           setIsErrorModalVisible(true);
+//         } else {
+//           console.log('Encoded image path:', result);
+//           setEncodedImageUri(result);
+//           setIsSuccessModalVisible(true);
+//         }
+//       });
+//     }
+//   } catch (error) {
+//     setIsLoading(false);
+//     setErrorMessage(error.message);
+//     setIsErrorModalVisible(true);
+//   }
+// };
