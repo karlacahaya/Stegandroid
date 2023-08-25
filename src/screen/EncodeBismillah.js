@@ -18,10 +18,7 @@ import ImagePicker from 'react-native-image-crop-picker';
 import GalleryPermissionButton from '../component/buttons/GalleryPermissions';
 import CameraPermissionButton from '../component/buttons/CameraPermissions';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
-// import CryptoJS from 'react-native-crypto-js';
-// import crypto from 'react-native-crypto';
-// import {CameraRoll} from '@react-native-camera-roll/camera-roll';
-// import SaveToGalleryButton from '../component/buttons/SaveToGallery';
+import Aes from 'react-native-aes-crypto';
 
 const styles = StyleSheet.create({
   container: {
@@ -103,7 +100,8 @@ const {LSBSteganography} = NativeModules;
 const EncodeBismillah = () => {
   const [textKey, setTextKey] = React.useState('');
   const [message, setMessage] = React.useState('');
-  // const [useAesEncryption, setUseAesEncryption] = useState(false); // State for the toggle switch
+  const [useAesEncryption, setUseAesEncryption] = useState(false);
+  const [pbkdf2Key, setPbkdf2Key] = useState(null);
   const [originalImageUri, setOriginalImageUri] = useState(null);
   const [encodedImageUri, setEncodedImageUri] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -155,40 +153,63 @@ const EncodeBismillah = () => {
     // console.log('Message:', newText);
   };
 
+  const generateKey = (password, salt, cost, length) =>
+    Aes.pbkdf2(password, salt, cost, length);
+
+  const encryptData = (text, key) => {
+    return Aes.randomKey(16).then(iv => {
+      return Aes.encrypt(text, key, iv, 'aes-256-cbc').then(cipher => ({
+        cipher,
+        iv,
+      }));
+    });
+  };
+
   const handleEncodeImage = async () => {
-    if (!originalImageUri || !message) {
-      console.warn('Please select an image and enter a message');
-      return;
-    }
-
-    setIsLoading(true);
-
     try {
-      // Generate a key from the user's password using PBKDF
-      console.log('Password', textKey)
-      // const password = textKey; // Replace with user's input
-      // const salt = crypto.randomBytes(16); // Generate a random salt
-      // const keyBytes = CryptoJS.PBKDF2(password, salt, {
-      //   keySize: 256 / 32,
-      //   iterations: 1000,
-      // });
+      if (!originalImageUri || !message) {
+        console.warn('Please select an image and enter a message');
+        setIsLoading(false);
+        return;
+      }
 
+      setIsLoading(true);
+
+      let finalMessage = message;
+
+      if (textKey && textKey.trim() !== '') {
+        const password = textKey;
+
+        // Generate a random salt for better security rather than using a hardcoded one
+        const salt = await Aes.randomKey(16);
+
+        const key = await generateKey(password, salt, 5000, 256);
+        console.log('Key:', key);
+
+        const {cipher} = await encryptData(message, key);
+        console.log('Encrypted:', cipher);
+
+        finalMessage = cipher;
+        setUseAesEncryption(true);
+      } else {
+        setUseAesEncryption(false);
+      }
+
+      console.log('finalMessage',finalMessage);
       const imagePath = originalImageUri.replace('file://', '');
-      console.log('original image path:', originalImageUri);
 
-      // Pass keyBytes as an array
       LSBSteganography.encode(
         imagePath,
-        message,
-        textKey ? textKey : null,
+        finalMessage,
+        textKey ? textKey : null, // Pass the password if provided, otherwise null
+        useAesEncryption,
         result => {
           setIsLoading(false);
-
           if (result.startsWith('Error:')) {
             setErrorMessage(result);
             setIsErrorModalVisible(true);
           } else {
-            console.log('Encoded image path:', result);
+            // console.log('Encoded image path:', result);
             setEncodedImageUri(result);
             setIsSuccessModalVisible(true);
           }
@@ -196,7 +217,7 @@ const EncodeBismillah = () => {
       );
     } catch (error) {
       setIsLoading(false);
-      setErrorMessage(error.message);
+      setErrorMessage(`Error: ${error.message}`);
       setIsErrorModalVisible(true);
     }
   };
@@ -259,6 +280,10 @@ const EncodeBismillah = () => {
             </TouchableOpacity>
           </>
         )}
+
+        {/* <TouchableOpacity onPress={test} style={styles.button}>
+          <Text style={styles.buttonText}>test</Text>
+        </TouchableOpacity> */}
 
         {/* <SaveToGalleryButton tag={encodedImageUri} /> */}
 

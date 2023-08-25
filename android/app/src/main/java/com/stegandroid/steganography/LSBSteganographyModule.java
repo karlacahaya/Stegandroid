@@ -23,31 +23,20 @@ import android.content.ContentValues;
 import android.provider.MediaStore;
 import android.net.Uri;
 
-//imports for AES encryption and key management
-// import javax.crypto.Cipher;
-// import javax.crypto.spec.SecretKeySpec;
-// import java.security.Key;
-// import java.util.Base64;
-
 //imports module to include PBKDF
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 import java.security.spec.KeySpec;
-
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
-// import javax.crypto.SecretKeySpec;
 import java.security.SecureRandom;
-// import javax.crypto.spec.PBEKeySpec;
-// import javax.crypto.SecretKeyFactory;
-// import java.security.spec.KeySpec;
 
 import javax.crypto.spec.SecretKeySpec;
 import java.util.Base64;
 
 public class LSBSteganographyModule extends ReactContextBaseJavaModule {
     private final ReactApplicationContext reactContext;
-    private byte[] keyBytes; // Declare keyBytes at the class level
+    private byte[] keyBytes; // Declare keyBytes here
 
     public LSBSteganographyModule(@Nullable ReactApplicationContext reactContext) {
         super(reactContext);
@@ -71,98 +60,145 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
     public void encode(String imageUri, String message, String password, boolean usePbkdf, Callback callback) {
         try {
             Bitmap encodedImage;
+
             if (usePbkdf && !password.isEmpty()) {
-                byte[] salt = generateSalt(); // You need to implement this method to generate a random salt
-                SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
-                KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 65536, 256); // You can adjust iteration
-                                                                                         // count and key length
-                SecretKey secretKey = factory.generateSecret(spec);
-                byte[] keyBytes = secretKey.getEncoded();
-
+                byte[] keyBytes = generateEncryptionKey(password);
                 encodedImage = encodeImageWithMessage(imageUri, message, keyBytes);
-                String savedImagePath = saveEncodedImage(encodedImage, imageUri);
-                refreshGallery(savedImagePath);
-                callback.invoke(savedImagePath);
-
             } else {
-                encodedImage = encodeImageWithMessage(imageUri, message);
+                encodedImage = encodeImageWithoutEncryption(imageUri, message); // Assuming you have this method
             }
 
             String savedImagePath = saveEncodedImage(encodedImage, imageUri);
             refreshGallery(savedImagePath);
             callback.invoke(savedImagePath);
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
+            callback.invoke("Error: Invalid argument - " + e.getMessage());
+        } catch (IOException e) {
+            callback.invoke("Error: I/O issue - " + e.getMessage());
+        } catch (Exception e) { // generic catch for other potential exceptions
             callback.invoke("Error: " + e.getMessage());
+        }
+
+    }
+
+    private byte[] generateEncryptionKey(String password) throws Exception {
+        byte[] salt = generateSalt();
+        SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
+        KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 65536, 256);
+        SecretKey secretKey = factory.generateSecret(spec);
+        return secretKey.getEncoded();
+    }
+
+    private Bitmap encodeImageWithMessage(String imageUri, String message, byte[] keyBytes) throws Exception {
+        // The image decoding logic
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(imageUri, options);
+        Bitmap image = BitmapFactory.decodeFile(imageUri);
+
+        // Message length check
+        int imageSize = image.getWidth() * image.getHeight();
+        if (message.length() > imageSize) {
+            throw new Exception("Error: Message too long for this image");
+        }
+
+        // Encrypting the message using AES
+        Cipher cipher = Cipher.getInstance("AES");
+        SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+        byte[] encryptedMessage = cipher.doFinal(message.getBytes());
+
+        // Embedding the encrypted message into the image's pixels
+        StringBuilder binaryMessage = new StringBuilder();
+        for (byte b : encryptedMessage) {
+            binaryMessage.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
+        }
+
+        Bitmap mutableBitmap = image.copy(Bitmap.Config.ARGB_8888, true);
+        embedMessageInBitmap(binaryMessage, mutableBitmap);
+
+        return mutableBitmap;
+    }
+
+    private void embedMessageInBitmap(StringBuilder binaryMessage, Bitmap mutableBitmap) {
+        int messageIndex = 0;
+        outerloop: for (int y = 0; y < mutableBitmap.getHeight(); y++) {
+            for (int x = 0; x < mutableBitmap.getWidth(); x++) {
+                if (messageIndex >= binaryMessage.length()) {
+                    break outerloop;
+                }
+
+                int pixel = mutableBitmap.getPixel(x, y);
+                char bit = binaryMessage.charAt(messageIndex);
+
+                if (bit == '1') {
+                    pixel |= 1;
+                } else {
+                    pixel &= ~1;
+                }
+
+                mutableBitmap.setPixel(x, y, pixel);
+                messageIndex++;
+            }
         }
     }
 
-    private Bitmap encodeImageWithMessage(String imageUri, String message, byte[]... keyBytes) throws Exception {
-        try {
-            // Log the image type before attempting to decode
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inJustDecodeBounds = true; // Avoid memory allocation here
-            BitmapFactory.decodeFile(imageUri, options);
-            Log.d("LSBSteganography", "Image URI: " + imageUri);
-            Log.d("LSBSteganography", "Image type: " + options.outMimeType);
+    private Bitmap encodeImageWithoutEncryption(String imageUri, String message)
+            throws IOException, IllegalArgumentException {
+        // Log the image type before attempting to decode
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true; // Avoid memory allocation here
+        BitmapFactory.decodeFile(imageUri, options);
+        Log.d("LSBSteganography", "Image URI: " + imageUri);
+        Log.d("LSBSteganography", "Image type: " + options.outMimeType);
 
-            Bitmap image = BitmapFactory.decodeFile(imageUri);
+        Bitmap image = BitmapFactory.decodeFile(imageUri);
 
-            // Check if the image can contain the message
-            int imageSize = image.getWidth() * image.getHeight();
-            if (message.length() > imageSize) {
-                throw new Exception("Error: Message too long for this image");
-            }
-
-            // Encrypt the message using AES if keyBytes are provided
-            if (keyBytes.length > 0) {
-                Cipher cipher = Cipher.getInstance("AES");
-                SecretKeySpec keySpec = new SecretKeySpec(keyBytes[0], "AES");
-                cipher.init(Cipher.ENCRYPT_MODE, keySpec);
-                byte[] encryptedMessage = cipher.doFinal(message.getBytes());
-
-                // Convert the encrypted message to binary string
-                StringBuilder binaryMessage = new StringBuilder();
-                for (byte b : encryptedMessage) {
-                    binaryMessage.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
-                }
-
-                Log.d("Encode", "binaryMessage:" + binaryMessage);
-                Log.d("Encode", "message:" + message);
-
-                // Embed the binary message into the image's pixels
-                int messageIndex = 0;
-                Bitmap mutableBitmap = image.copy(Bitmap.Config.ARGB_8888, true);
-                outerloop: for (int y = 0; y < image.getHeight(); y++) {
-                    for (int x = 0; x < image.getWidth(); x++) {
-                        if (messageIndex >= binaryMessage.length()) {
-                            break outerloop;
-                        }
-
-                        int pixel = mutableBitmap.getPixel(x, y);
-                        char bit = binaryMessage.charAt(messageIndex);
-
-                        if (bit == '1') {
-                            pixel |= 1;
-                        } else {
-                            pixel &= ~1;
-                        }
-
-                        mutableBitmap.setPixel(x, y, pixel);
-                        messageIndex++;
-                    }
-                }
-
-                // Returning the encoded image
-                return mutableBitmap;
-            } else {
-                // Handle the case where keyBytes are not provided (you can decide how to handle
-                // this)
-                throw new Exception("KeyBytes not provided for encryption");
-            }
-
-        } catch (Exception e) {
-            throw new Exception("Error during encoding: " + e.getMessage());
+        // 1. Check if the image can contain the message
+        int imageSize = image.getWidth() * image.getHeight();
+        if (message.length() > imageSize) {
+            throw new IllegalArgumentException("Message too long for this image");
         }
+
+        // Convert message length to binary string (with length prefix)
+        String binaryLength = String.format("%16s", Integer.toBinaryString(message.length())).replace(' ', '0'); // 16
+                                                                                                                 // bits
+                                                                                                                 // length
+
+        StringBuilder binaryMessage = new StringBuilder(binaryLength);
+        for (char c : message.toCharArray()) {
+            String binString = String.format("%8s", Integer.toBinaryString(c)).replace(' ', '0'); // 8 bits for a char
+            binaryMessage.append(binString);
+        }
+
+        Log.d("Encode", "binaryMessage Encode:" + binaryMessage);
+        Log.d("Encode", "message Encode:" + message);
+
+        // 3. Embed the binary message into the image's pixels
+        int messageIndex = 0;
+        Bitmap mutableBitmap = image.copy(Bitmap.Config.ARGB_8888, true);
+        outerloop: for (int y = 0; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) {
+                if (messageIndex >= binaryMessage.length()) {
+                    break outerloop;
+                }
+
+                int pixel = mutableBitmap.getPixel(x, y);
+                char bit = binaryMessage.charAt(messageIndex);
+
+                if (bit == '1') {
+                    pixel |= 1;
+                } else {
+                    pixel &= ~1;
+                }
+
+                mutableBitmap.setPixel(x, y, pixel);
+                messageIndex++;
+            }
+        }
+
+        // Return the encoded image
+        return mutableBitmap;
     }
 
     private String saveEncodedImage(Bitmap encodedImage, String originalImageUri) throws Exception {
