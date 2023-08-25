@@ -95,7 +95,9 @@ const {LSBSteganography} = NativeModules;
 
 const DecodeScreen = () => {
   // const [text, setText] = React.useState('');
+  const [textKey, setTextKey] = React.useState('');
   const [originalImageUri, setOriginalImageUri] = useState(null);
+  const [useAesEncryption, setUseAesEncryption] = useState(false);
   const [decodedImageMsg, setDecodedImageMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
@@ -116,6 +118,16 @@ const DecodeScreen = () => {
     }
   };
 
+  // const onChangeTextKey = newTextKey => {
+  //   setTextKey(newTextKey);
+  //   // Check if the input is empty or just whitespace
+  //   if (!newTextKey.trim()) {
+  //     setUseAesEncryption(false);
+  //   } else {
+  //     setUseAesEncryption(true);
+  //   }
+  // };
+
   const handleDecodeImage = async () => {
     if (!originalImageUri) {
       console.warn('Please select an image');
@@ -127,7 +139,8 @@ const DecodeScreen = () => {
     try {
       const imagePath = originalImageUri.replace('file://', '');
       console.log('original image path:', originalImageUri);
-      LSBSteganography.decode(imagePath, result => {
+
+      LSBSteganography.decode(imagePath, textKey, useAesEncryption, result => {
         setIsLoading(false);
 
         if (result.startsWith('Error:')) {
@@ -145,6 +158,7 @@ const DecodeScreen = () => {
       setIsErrorModalVisible(true);
     }
   };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
@@ -163,11 +177,29 @@ const DecodeScreen = () => {
           </TouchableOpacity>
         )}
 
-        {!decodedImageMsg && (
+        {!decodedImageMsg && originalImageUri && (
+          <>
+            <TextInput
+              style={styles.input}
+              onChangeText={onChangeTextKey}
+              value={textKey}
+              placeholder="Password (Optional)"
+            />
+          </>
+        )}
+
+        {!decodedImageMsg && originalImageUri && (
           <>
             <TouchableOpacity onPress={handleDecodeImage} style={styles.button}>
-            <Text style={styles.buttonText}>Decode</Text>
+              <Text style={styles.buttonText}>Decode</Text>
             </TouchableOpacity>
+          </>
+        )}
+
+        {originalImageUri && decodedImageMsg && (
+          <>
+            <Text>Messages</Text>
+            <Text style={styles.input}>{decodedImageMsg}</Text>
           </>
         )}
 
