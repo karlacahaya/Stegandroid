@@ -32,7 +32,16 @@ import javax.crypto.SecretKey;
 import java.security.SecureRandom;
 
 import javax.crypto.spec.SecretKeySpec;
-import java.util.Base64;
+
+// import java.util.Base64;
+
+import javax.crypto.spec.IvParameterSpec;
+import android.util.Base64;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+
+import java.security.MessageDigest;
+import java.util.Arrays;
 
 public class LSBSteganographyModule extends ReactContextBaseJavaModule {
     private final ReactApplicationContext reactContext;
@@ -252,79 +261,175 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void decode(String imageUri, String password, boolean usePbkdf, Callback callback) {
+    public void decode(String imageUri, Callback callback) {
         try {
-            if (usePbkdf && !password.isEmpty()) {
-                byte[] salt = generateSalt();
-                SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
-                KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 65536, 256);
-                SecretKey secretKey = factory.generateSecret(spec);
-                keyBytes = secretKey.getEncoded(); // Store keyBytes at the class level
-            }
-
-            String decodedMessage = decodeMessageFromImage(imageUri, keyBytes);
+            String decodedMessage = decodeMessageFromImage(imageUri);
+            // Log.d("y", "image uri decode:" + imageUri);
             callback.invoke(decodedMessage);
         } catch (Exception e) {
             callback.invoke("Error: " + e.getMessage());
         }
     }
 
-    private String decodeMessageFromImage(String imageUri, byte[] keyBytes) throws Exception {
-        try {
-            Bitmap image = BitmapFactory.decodeFile(imageUri);
-            StringBuilder binaryMessage = new StringBuilder();
+    private String decodeMessageFromImage(String imageUri) throws Exception {
+        Bitmap image = BitmapFactory.decodeFile(imageUri);
+        StringBuilder binaryMessage = new StringBuilder();
 
-            // Extract the length of the message
-            StringBuilder binaryLength = new StringBuilder();
-            for (int i = 0; i < 16; i++) {
-                int pixel = image.getPixel(i % image.getWidth(), i / image.getWidth());
-                binaryLength.append(pixel & 1);
-            }
-            int messageLength = Integer.parseInt(binaryLength.toString(), 2);
+        // 1. Extract the length of the message
+        StringBuilder binaryLength = new StringBuilder();
+        for (int i = 0; i < 16; i++) {
+            int pixel = image.getPixel(i % image.getWidth(), i / image.getWidth());
+            binaryLength.append(pixel & 1);
+        }
+        int messageLength = Integer.parseInt(binaryLength.toString(), 2);
 
-            // Extract the actual message
-            // You've already extracted the 16 bits for the message length, so start from
-            // index 16
-            // and remember, for each character of the message, you're extracting 8 bits
-            for (int i = 16; i < 16 + (messageLength * 8); i++) {
-                int pixel = image.getPixel(i % image.getWidth(), i / image.getWidth());
-                binaryMessage.append(pixel & 1);
-            }
-
-            Log.d("Decode", "binaryMessage:" + binaryMessage);
-
-            // Convert the binary message back to text
-            StringBuilder textMessage = new StringBuilder();
-            for (int i = 0; i < binaryMessage.length(); i += 8) { // Use 8 since each char is represented by 8 bits
-                String byteString = binaryMessage.substring(i, i + 8); // Extract each 8-bit sequence
-                int charCode = Integer.parseInt(byteString, 2);
-                textMessage.append((char) charCode);
-            }
-
-            if (keyBytes != null) {
-                // Decrypt the text message using the provided keyBytes
-                Cipher cipher = Cipher.getInstance("AES");
-                SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
-                cipher.init(Cipher.DECRYPT_MODE, keySpec);
-
-                byte[] encryptedBytes = new byte[textMessage.length()];
-                for (int i = 0; i < textMessage.length(); i++) {
-                    encryptedBytes[i] = (byte) textMessage.charAt(i);
-                }
-
-                byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
-                textMessage = new StringBuilder(new String(decryptedBytes));
-            }
-
-            Log.d("Decode", "textMessage:" + textMessage);
-
-            return textMessage.toString();
-
-        } catch (Exception e) {
-            throw new Exception("Error during decoding: " + e.getMessage());
+        // 2. Extract the actual message
+        // You've already extracted the 16 bits for the message length, so start from
+        // index 16
+        // and remember, for each character of the message, you're extracting 8 bits
+        for (int i = 16; i < 16 + (messageLength * 8); i++) {
+            int pixel = image.getPixel(i % image.getWidth(), i / image.getWidth());
+            binaryMessage.append(pixel & 1);
         }
 
+        Log.d("Decode", "binaryMessage Decode:" + binaryMessage);
+
+        // Convert the binary message back to text
+        StringBuilder textMessage = new StringBuilder();
+        for (int i = 0; i < binaryMessage.length(); i += 8) { // Use 8 since each char is represented by 8 bits
+            String byteString = binaryMessage.substring(i, i + 8); // Extract each 8-bit sequence
+            int charCode = Integer.parseInt(byteString, 2);
+            textMessage.append((char) charCode);
+        }
+
+        Log.d("Decode", "textMessage Decode:" + textMessage);
+
+        return textMessage.toString();
     }
+
+    // @ReactMethod
+    // public void decode(String imageUri, String password, boolean usePbkdf,
+    // Callback callback) {
+    // try {
+    // // 1. Extract embedded data from the image
+    // String textData = decodeMessageFromImage(imageUri);
+
+    // // 2. Split the extracted data into salt, IV, and encrypted message
+    // String saltString = textData.substring(0, 32);
+    // Log.d("y", "saltString" + saltString);
+    // String ivString = textData.substring(32, 32 + 24);
+    // Log.d("y", "ivString" + ivString);
+    // String encryptedString = textData.substring(32 + 24);
+    // Log.d("y", "encryptedString" + encryptedString);
+
+    // // Remove non-base64 characters from ivString before decoding
+    // ivString = ivString.split("==")[0] + "==";
+
+    // // 3. Convert salt and IV to byte arrays
+    // byte[] saltBytes = hexStringToByteArray(saltString);
+    // byte[] ivBytes = Base64.decode(ivString, Base64.DEFAULT);
+    // byte[] encryptedBytes =
+    // encryptedString.getBytes(StandardCharsets.ISO_8859_1);
+
+    // // 4. Generate key
+    // SecretKeySpec secretKey;
+    // if (usePbkdf) {
+    // SecretKeyFactory factory =
+    // SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
+    // KeySpec spec = new PBEKeySpec(password.toCharArray(), saltBytes, 65536, 256);
+    // SecretKey tmp = factory.generateSecret(spec);
+    // secretKey = new SecretKeySpec(tmp.getEncoded(), "AES");
+    // } else {
+    // byte[] key = password.getBytes(StandardCharsets.UTF_8);
+    // MessageDigest sha = MessageDigest.getInstance("SHA-256");
+    // key = sha.digest(key);
+    // key = Arrays.copyOf(key, 16); // use only first 128 bit
+    // secretKey = new SecretKeySpec(key, "AES");
+    // }
+
+    // // 5. Decrypt
+    // Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5PADDING");
+    // IvParameterSpec ivSpec = new IvParameterSpec(ivBytes);
+    // cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec);
+    // byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
+
+    // // 6. Return the decrypted message as a string
+    // String decryptedMessage = new String(decryptedBytes,
+    // StandardCharsets.ISO_8859_1);
+    // callback.invoke(null, decryptedMessage);
+    // } catch (Exception e) {
+    // callback.invoke(e.getMessage(), null);
+    // }
+    // }
+
+    // private byte[] extractSaltFromImage(String imageUri) throws Exception {
+    // Bitmap image = BitmapFactory.decodeFile(imageUri);
+    // StringBuilder binarySalt = new StringBuilder();
+
+    // // Extract the fixed-length salt (256 bits for 32 bytes)
+    // for (int i = 16; i < (16 + 256); i++) {
+    // int pixel = image.getPixel(i % image.getWidth(), i / image.getWidth());
+    // binarySalt.append(pixel & 1);
+    // }
+
+    // // Convert binary salt back to byte array
+    // ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    // for (int i = 0; i < binarySalt.length(); i += 8) {
+    // String byteString = binarySalt.substring(i, i + 8);
+    // int byteValue = Integer.parseInt(byteString, 2);
+    // baos.write(byteValue);
+    // }
+
+    // return baos.toByteArray();
+    // }
+
+    // private byte[] deriveKey(String passphrase, byte[] salt) throws Exception {
+    // int iterationCount = 10000;
+    // int keyLength = 256; // 256 bits
+
+    // PBEKeySpec spec = new PBEKeySpec(passphrase.toCharArray(), salt,
+    // iterationCount, keyLength);
+    // SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+    // return skf.generateSecret(spec).getEncoded();
+    // }
+
+    // private String decodeMessageFromImage(String imageUri) throws Exception {
+    // try {
+    // Bitmap image = BitmapFactory.decodeFile(imageUri);
+    // StringBuilder binaryData = new StringBuilder();
+
+    // // Extract the data starting from index 16 (after the message length)
+    // for (int i = 16; i < image.getWidth() * image.getHeight() &&
+    // binaryData.length() < (272 + 1024); i++) {
+    // int pixel = image.getPixel(i % image.getWidth(), i / image.getWidth());
+    // binaryData.append(pixel & 1);
+    // }
+
+    // // Convert the binary data back to text
+    // StringBuilder textData = new StringBuilder();
+    // for (int i = 0; i < binaryData.length(); i += 8) {
+    // String byteString = binaryData.substring(i, i + 8);
+    // int charCode = Integer.parseInt(byteString, 2);
+    // textData.append((char) charCode);
+    // }
+
+    // Log.d("HH", "textData: " + textData.toString());
+    // return textData.toString();
+
+    // } catch (Exception e) {
+    // throw new Exception("Error during decoding: " + e.getMessage());
+    // }
+    // }
+
+    // private byte[] hexStringToByteArray(String s) {
+    // int len = s.length();
+    // byte[] data = new byte[len / 2];
+    // for (int i = 0; i < len; i += 2) {
+    // data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4)
+    // + Character.digit(s.charAt(i+1), 16));
+    // }
+    // return data;
+    // }
 
     // AES
     // Convert binary message to encrypted bytes

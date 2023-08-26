@@ -182,14 +182,16 @@ const EncodeBismillah = () => {
 
         // Generate a random salt for better security rather than using a hardcoded one
         const salt = await Aes.randomKey(16);
+        console.log('salt', salt);
 
         const key = await generateKey(password, salt, 5000, 256);
         console.log('Key:', key);
 
-        const {cipher} = await encryptData(message, key);
-        console.log('Encrypted:', cipher);
+        const {cipher, iv} = await encryptData(message, key);
+        console.log('iv', iv);
+        console.log('cipher:', cipher);
 
-        finalMessage = cipher;
+        finalMessage = `${salt}${iv}${cipher}`;
         setUseAesEncryption(true);
       } else {
         setUseAesEncryption(false);

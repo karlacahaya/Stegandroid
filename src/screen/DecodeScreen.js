@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import ImagePicker from 'react-native-image-crop-picker';
+import Aes from 'react-native-aes-crypto';
 
 const styles = StyleSheet.create({
   container: {
@@ -107,8 +108,6 @@ const DecodeScreen = () => {
   const handleOpenGallery = async () => {
     try {
       const image = await ImagePicker.openPicker({
-        // width: 300,
-        // height: 400,
         cropping: false,
       });
 
@@ -118,14 +117,32 @@ const DecodeScreen = () => {
     }
   };
 
-  // const onChangeTextKey = newTextKey => {
-  //   setTextKey(newTextKey);
-  //   // Check if the input is empty or just whitespace
-  //   if (!newTextKey.trim()) {
-  //     setUseAesEncryption(false);
-  //   } else {
-  //     setUseAesEncryption(true);
-  //   }
+  const onChangeTextKey = newTextKey => {
+    setTextKey(newTextKey);
+    // Check if the input is empty or just whitespace
+    if (!newTextKey.trim()) {
+      setUseAesEncryption(false);
+    } else {
+      setUseAesEncryption(true);
+    }
+  };
+
+  // const decryptData = (encryptedData, key) =>
+  //   Aes.decrypt(encryptedData.cipher, key, encryptedData.iv, 'aes-256-cbc');
+
+  // const test = () => {
+  //   let cipher = 'XN0UcrK2dTEIzXklD7rZjA==';
+  //   let iv = 'acc699415f58c3ae8eb3741a5b26e78c';
+  //   let key =
+  //     '75f28dc2fb8ba0315b89388de0489e4c244ca3adac19a0302b82dd3b1331e55a';
+
+  //   decryptData({cipher, iv}, key)
+  //     .then(text => {
+  //       console.log('Decrypted:', text);
+  //     })
+  //     .catch(error => {
+  //       console.log(error);
+  //     });
   // };
 
   const handleDecodeImage = async () => {
@@ -139,8 +156,7 @@ const DecodeScreen = () => {
     try {
       const imagePath = originalImageUri.replace('file://', '');
       console.log('original image path:', originalImageUri);
-
-      LSBSteganography.decode(imagePath, textKey, useAesEncryption, result => {
+      LSBSteganography.decode(imagePath, result => {
         setIsLoading(false);
 
         if (result.startsWith('Error:')) {
@@ -148,6 +164,14 @@ const DecodeScreen = () => {
           setIsErrorModalVisible(true);
         } else {
           console.log('Decoded image msg:', result);
+
+          // If the useAesEncryption flag is true and the user hasn't entered a password
+          if (useAesEncryption && !textKey.trim()) {
+            setErrorMessage('Password required for decryption.');
+            setIsErrorModalVisible(true);
+            return;
+          }
+          decryptMessage(result);
           setDecodedImageMsg(result);
           setIsSuccessModalVisible(true);
         }
@@ -159,12 +183,82 @@ const DecodeScreen = () => {
     }
   };
 
+  const decryptMessage = async result => {
+    try {
+      if (useAesEncryption) {
+        // If AES encryption is to be used
+        const salt = result.substr(0, 32);
+        const iv = result.substr(32, 32);
+        const cipherText = result.substr(64);
+
+        console.log('salt', salt);
+        console.log('iv', iv);
+        console.log('cipherText', cipherText);
+
+        // Derive the decryption key
+        const derivedKey = await Aes.pbkdf2(textKey, salt, 5000, 256);
+
+        // Decrypt the message
+        const decryptedMessage = await Aes.decrypt(
+          cipherText,
+          derivedKey,
+          iv,
+          'aes-256-cbc',
+        );
+        setDecodedImageMsg(decryptedMessage);
+      } else {
+        setDecodedImageMsg(result);
+      }
+    } catch (error) {
+      console.log('error:', error.message);
+    }
+  };
+
+  //   const handleDecodeImage = async () => {
+  //     if (!originalImageUri) {
+  //       console.warn('Please select an image');
+  //       return;
+  //     }
+
+  //     setIsLoading(true);
+
+  //     try {
+  //       const imagePath = originalImageUri.replace('file://', '');
+
+  //       console.log('textKey', textKey);
+  //       console.log('useAesEncryption', useAesEncryption);
+  //       LSBSteganography.decode(
+  //         imagePath,
+  //         textKey,
+  //         useAesEncryption,
+  //         async (result) => {
+  //           setIsLoading(false);
+
+  //           if (result.startsWith('Error:')) {
+  //             console.log(result);
+  //             setErrorMessage(result);
+  //             setIsErrorModalVisible(true);
+  //           } else {
+  //             console.log('Decrypted message:', result);
+
+  //             // Here you can handle the result, for instance, display it on the UI or save it etc.
+  //             setDecodedImageMsg(result); // Assuming you have a state for it
+  //           }
+  //         }
+  //       );
+  //     } catch (error) {
+  //       console.error("An error occurred:", error);
+  //       setIsLoading(false);
+  //       setErrorMessage("An unexpected error occurred. Please try again.");
+  //       setIsErrorModalVisible(true);
+  //     }
+  // };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
         {originalImageUri && (
           <>
-            <Text style={styles.textStyle}>Original Image</Text>
             <View style={styles.imageContainer}>
               <Image source={{uri: originalImageUri}} style={styles.image} />
             </View>
@@ -202,6 +296,10 @@ const DecodeScreen = () => {
             <Text style={styles.input}>{decodedImageMsg}</Text>
           </>
         )}
+
+        {/* <TouchableOpacity onPress={test} style={styles.button}>
+          <Text style={styles.buttonText}>test</Text>
+        </TouchableOpacity> */}
 
         {isLoading && <ActivityIndicator size="large" color="#0000ff" />}
 
