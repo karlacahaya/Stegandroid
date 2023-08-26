@@ -172,23 +172,22 @@ const DecodeScreen = () => {
           console.log('textKey', textKey);
           if (textKey && hasEncryption) {
             decryptMessage(result);
-            console.log('aes encrypt true, correct password')
+            console.log('aes encrypt true, correct password');
           } else {
             console.log('aes encrypt true, no password');
             setErrorMessage('Failed to decode');
             setIsErrorModalVisible(true);
           }
         } else {
-          if (textKey) {
-            console.log('aes encrypt false, wrong password')
-            setErrorMessage(
-              'Error, you either inputs a wrong password or the image doesnt need a password',
-            ); // This represents an error state when a password is given for a non-encrypted image
-            setIsErrorModalVisible(true);
-          } else {
+          if (!textKey) {
             console.log('aes encrypt false, no password');
             setDecodedImageMsg(result);
             setIsSuccessModalVisible(true);
+            // console.log('aes encrypt false, wrong password')
+            // setErrorMessage(
+            //   'Error, you either inputs a wrong password or the image doesnt need a password',
+            // ); // This represents an error state when a password is given for a non-encrypted image
+            // setIsErrorModalVisible(true);
           }
         }
       });
@@ -224,7 +223,7 @@ const DecodeScreen = () => {
     } catch (error) {
       console.log('error:', error.message);
       setErrorMessage(
-        'Decryption failed. Please check your password.',
+        'Decryption failed. The password doesnt match the encrypted image.',
       );
       setIsErrorModalVisible(true);
     }
