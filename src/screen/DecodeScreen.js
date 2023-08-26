@@ -155,25 +155,41 @@ const DecodeScreen = () => {
 
     try {
       const imagePath = originalImageUri.replace('file://', '');
-      console.log('original image path:', originalImageUri);
+      // console.log('original image path:', originalImageUri);
       LSBSteganography.decode(imagePath, result => {
         setIsLoading(false);
 
         if (result.startsWith('Error:')) {
           setErrorMessage(result);
           setIsErrorModalVisible(true);
-        } else {
-          console.log('Decoded image msg:', result);
+          return;
+        }
 
-          // If the useAesEncryption flag is true and the user hasn't entered a password
-          if (useAesEncryption && !textKey.trim()) {
-            setErrorMessage('Password required for decryption.');
+        // Check if the result contains the salt and iv (based on expected length)
+        const hasEncryption = result.length > 64; // salt (32) + iv (32) + minimum cipherText (32)
+        // console.log('hasEncryption', hasEncryption);
+        if (useAesEncryption) {
+          console.log('textKey', textKey);
+          if (textKey && hasEncryption) {
+            decryptMessage(result);
+            console.log('aes encrypt true, correct password')
+          } else {
+            console.log('aes encrypt true, no password');
+            setErrorMessage('Failed to decode');
             setIsErrorModalVisible(true);
-            return;
           }
-          decryptMessage(result);
-          setDecodedImageMsg(result);
-          setIsSuccessModalVisible(true);
+        } else {
+          if (textKey) {
+            console.log('aes encrypt false, wrong password')
+            setErrorMessage(
+              'Error, you either inputs a wrong password or the image doesnt need a password',
+            ); // This represents an error state when a password is given for a non-encrypted image
+            setIsErrorModalVisible(true);
+          } else {
+            console.log('aes encrypt false, no password');
+            setDecodedImageMsg(result);
+            setIsSuccessModalVisible(true);
+          }
         }
       });
     } catch (error) {
@@ -185,74 +201,34 @@ const DecodeScreen = () => {
 
   const decryptMessage = async result => {
     try {
-      if (useAesEncryption) {
-        // If AES encryption is to be used
-        const salt = result.substr(0, 32);
-        const iv = result.substr(32, 32);
-        const cipherText = result.substr(64);
+      const salt = await result.substr(0, 32);
+      const iv = await result.substr(32, 32);
+      const cipherText = await result.substr(64); // rest of the string
 
-        console.log('salt', salt);
-        console.log('iv', iv);
-        console.log('cipherText', cipherText);
+      // console.log('salt', salt);
+      // console.log('iv', iv);
+      // console.log('cipherText', cipherText);
 
-        // Derive the decryption key
-        const derivedKey = await Aes.pbkdf2(textKey, salt, 5000, 256);
+      // Derive the decryption key
+      const derivedKey = await Aes.pbkdf2(textKey, salt, 5000, 256);
 
-        // Decrypt the message
-        const decryptedMessage = await Aes.decrypt(
-          cipherText,
-          derivedKey,
-          iv,
-          'aes-256-cbc',
-        );
-        setDecodedImageMsg(decryptedMessage);
-      } else {
-        setDecodedImageMsg(result);
-      }
+      // Decrypt the message
+      const decryptedMessage = await Aes.decrypt(
+        cipherText,
+        derivedKey,
+        iv,
+        'aes-256-cbc',
+      );
+      setDecodedImageMsg(decryptedMessage);
+      setIsSuccessModalVisible(true);
     } catch (error) {
       console.log('error:', error.message);
+      setErrorMessage(
+        'Decryption failed. Please check your password.',
+      );
+      setIsErrorModalVisible(true);
     }
   };
-
-  //   const handleDecodeImage = async () => {
-  //     if (!originalImageUri) {
-  //       console.warn('Please select an image');
-  //       return;
-  //     }
-
-  //     setIsLoading(true);
-
-  //     try {
-  //       const imagePath = originalImageUri.replace('file://', '');
-
-  //       console.log('textKey', textKey);
-  //       console.log('useAesEncryption', useAesEncryption);
-  //       LSBSteganography.decode(
-  //         imagePath,
-  //         textKey,
-  //         useAesEncryption,
-  //         async (result) => {
-  //           setIsLoading(false);
-
-  //           if (result.startsWith('Error:')) {
-  //             console.log(result);
-  //             setErrorMessage(result);
-  //             setIsErrorModalVisible(true);
-  //           } else {
-  //             console.log('Decrypted message:', result);
-
-  //             // Here you can handle the result, for instance, display it on the UI or save it etc.
-  //             setDecodedImageMsg(result); // Assuming you have a state for it
-  //           }
-  //         }
-  //       );
-  //     } catch (error) {
-  //       console.error("An error occurred:", error);
-  //       setIsLoading(false);
-  //       setErrorMessage("An unexpected error occurred. Please try again.");
-  //       setIsErrorModalVisible(true);
-  //     }
-  // };
 
   return (
     <SafeAreaView style={styles.container}>
