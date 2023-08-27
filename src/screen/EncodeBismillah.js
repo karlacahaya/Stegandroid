@@ -12,88 +12,14 @@ import {
   ActivityIndicator,
   Modal,
   View,
-  Switch,
 } from 'react-native';
+import {colors, spacings, fonts, styles} from '../helper/style';
 import ImagePicker from 'react-native-image-crop-picker';
 import GalleryPermissionButton from '../component/buttons/GalleryPermissions';
 import CameraPermissionButton from '../component/buttons/CameraPermissions';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import Aes from 'react-native-aes-crypto';
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: StatusBar.currentHeight,
-  },
-  scrollView: {
-    marginHorizontal: 20,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    marginTop: 20,
-  },
-  button: {
-    backgroundColor: '#DDDDDD',
-    padding: 10,
-    borderRadius: 5,
-    marginHorizontal: 10,
-  },
-  buttonText: {
-    fontSize: 16,
-  },
-  imageContainer: {
-    flexDirection: 'row',
-    marginTop: 20,
-  },
-  image: {
-    height: 300,
-    width: 200,
-    resizeMode: 'contain',
-    marginHorizontal: 10,
-  },
-
-  input: {
-    height: 40,
-    margin: 12,
-    borderWidth: 1,
-    padding: 10,
-  },
-  centeredView: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 22,
-  },
-  modalView: {
-    margin: 20,
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 35,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  button1: {
-    borderRadius: 20,
-    padding: 10,
-    elevation: 2,
-  },
-  textStyle: {
-    color: 'white',
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  modalText: {
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-});
+import ShareButton from '../component/buttons/ShareButton';
 
 const {LSBSteganography} = NativeModules;
 
@@ -197,7 +123,7 @@ const EncodeBismillah = () => {
         setUseAesEncryption(false);
       }
 
-      console.log('finalMessage',finalMessage);
+      console.log('finalMessage', finalMessage);
       const imagePath = originalImageUri.replace('file://', '');
 
       LSBSteganography.encode(
@@ -224,10 +150,12 @@ const EncodeBismillah = () => {
     }
   };
 
+  console.log('encodedImageUri',encodedImageUri);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
-        {originalImageUri && (
+        {originalImageUri && !encodedImageUri && (
           <>
             <Text>Original Image</Text>
             <Image
@@ -282,6 +210,8 @@ const EncodeBismillah = () => {
             </TouchableOpacity>
           </>
         )}
+
+        {encodedImageUri && <ShareButton encodedImageUri={encodedImageUri} />}
 
         {/* <TouchableOpacity onPress={test} style={styles.button}>
           <Text style={styles.buttonText}>test</Text>

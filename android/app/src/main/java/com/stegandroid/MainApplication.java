@@ -11,6 +11,10 @@ import com.facebook.react.defaults.DefaultReactNativeHost;
 import com.facebook.soloader.SoLoader;
 import java.util.List;
 
+//react-native-share
+import cl.json.RNSharePackage;
+import cl.json.ShareApplication;
+
 public class MainApplication extends Application implements ReactApplication {
 
   private final ReactNativeHost mReactNativeHost =
@@ -26,6 +30,7 @@ public class MainApplication extends Application implements ReactApplication {
           List<ReactPackage> packages = new PackageList(this).getPackages();
           // Packages that cannot be auto linked yet can be added manually here, for example:
           packages.add(new LSBSteganographyPackage());
+          // packages.add(new RNSharePackage());
           return packages;
         }
 
