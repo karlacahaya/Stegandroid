@@ -7,18 +7,7 @@ import {
   Text,
 } from 'react-native';
 import CameraRoll from '@react-native-camera-roll/camera-roll';
-
-const styles = StyleSheet.create({
-  button: {
-    backgroundColor: '#DDDDDD',
-    padding: 10,
-    borderRadius: 5,
-    marginHorizontal: 10,
-  },
-  buttonText: {
-    fontSize: 16,
-  },
-});
+import styles from '../../helper/style';
 
 function SaveToGalleryButton({tag, type = 'photo', album}) {
   async function hasAndroidPermission() {

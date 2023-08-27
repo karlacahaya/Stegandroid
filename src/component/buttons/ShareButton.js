@@ -2,6 +2,7 @@ import React from 'react';
 import { TouchableOpacity, Text, Platform } from 'react-native';
 import Share from 'react-native-share';
 import RNFS from 'react-native-fs';
+import { StyleSheet } from 'react-native';
 
 const ShareButton = ({ encodedImageUri }) => {
 
@@ -45,10 +46,24 @@ const ShareButton = ({ encodedImageUri }) => {
   };
 
   return (
-    <TouchableOpacity onPress={shareImage}>
-      <Text>Share Encoded Image</Text>
+    <TouchableOpacity onPress={shareImage} style={styles.button}>
+      <Text style={styles.buttonText}>Share</Text>
     </TouchableOpacity>
   );
 };
+
+const styles = StyleSheet.create({
+  button: {
+    backgroundColor: '#5f5ae8',
+    padding: 10,
+    borderRadius: 5,
+    marginTop: 20,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+});
 
 export default ShareButton;

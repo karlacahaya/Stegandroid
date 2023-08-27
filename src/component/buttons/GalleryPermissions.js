@@ -5,18 +5,7 @@ import {
   TouchableOpacity,
   Text,
 } from 'react-native';
-
-const styles = StyleSheet.create({
-  button: {
-    backgroundColor: '#DDDDDD',
-    padding: 10,
-    borderRadius: 5,
-    marginHorizontal: 10,
-  },
-  buttonText: {
-    fontSize: 16,
-  },
-});
+import styles from '../../helper/style';
 
 export const requestGalleryPermission = async callback => {
   try {

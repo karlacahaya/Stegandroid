@@ -9,29 +9,29 @@ import {
   StatusBar,
   View,
 } from 'react-native';
-import { stylesHome } from '../helper/style';
+import { styles } from '../helper/style';
 
 const HomeScreen = ({navigation}) => {
   return (
-    <SafeAreaView style={stylesHome.container}>
-      <ScrollView style={stylesHome.scrollView}>
-        <View style={stylesHome.headerContainer}>
-          <Text style={stylesHome.headerStyle}>STEGANDROID</Text>
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView}>
+        <View style={styles.headerContainer}>
+          <Text style={styles.headerStyle}>STEGANDROID</Text>
         </View>
 
-        <View style={stylesHome.buttonContainer}>
-          <TouchableOpacity style={stylesHome.button}>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity style={styles.button}>
             <Text
               onPress={() => navigation.navigate('Encode')}
-              style={stylesHome.buttonText}>
+              style={styles.buttonText}>
               Encode
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={stylesHome.button}>
+          <TouchableOpacity style={styles.button}>
             <Text
               onPress={() => navigation.navigate('Decode')}
-              style={stylesHome.buttonText}>
+              style={styles.buttonText}>
               Decode
             </Text>
           </TouchableOpacity>

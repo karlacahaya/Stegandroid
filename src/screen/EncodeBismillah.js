@@ -157,7 +157,7 @@ const EncodeBismillah = () => {
       <ScrollView style={styles.scrollView}>
         {originalImageUri && !encodedImageUri && (
           <>
-            <Text>Original Image</Text>
+            <Text style={styles.header2Style}>Original Image</Text>
             <Image
               source={{uri: originalImageUri}}
               style={{width: 300, height: 400}}
@@ -211,13 +211,7 @@ const EncodeBismillah = () => {
           </>
         )}
 
-        {encodedImageUri && <ShareButton encodedImageUri={encodedImageUri} />}
-
-        {/* <TouchableOpacity onPress={test} style={styles.button}>
-          <Text style={styles.buttonText}>test</Text>
-        </TouchableOpacity> */}
-
-        {/* <SaveToGalleryButton tag={encodedImageUri} /> */}
+        {encodedImageUri && <ShareButton encodedImageUri={encodedImageUri} />}  
 
         {isLoading && <ActivityIndicator size="large" color="#0000ff" />}
 
