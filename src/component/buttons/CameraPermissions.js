@@ -33,7 +33,7 @@ const CameraPermissionButton = ({onPress}) => (
   <TouchableOpacity
     onPress={() => requestCameraPermissions(onPress)}
     style={styles.button}>
-    <Text style={styles.buttonText}>Take a picture</Text>
+    <Text style={styles.buttonText}>Capture from Camera</Text>
   </TouchableOpacity>
 );
 export default CameraPermissionButton;

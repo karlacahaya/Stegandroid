@@ -20,6 +20,7 @@ import CameraPermissionButton from '../component/buttons/CameraPermissions';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import Aes from 'react-native-aes-crypto';
 import ShareButton from '../component/buttons/ShareButton';
+import {Card} from 'react-native-paper';
 
 const {LSBSteganography} = NativeModules;
 
@@ -27,7 +28,6 @@ const EncodeBismillah = () => {
   const [textKey, setTextKey] = React.useState('');
   const [message, setMessage] = React.useState('');
   const [useAesEncryption, setUseAesEncryption] = useState(false);
-  const [pbkdf2Key, setPbkdf2Key] = useState(null);
   const [originalImageUri, setOriginalImageUri] = useState(null);
   const [encodedImageUri, setEncodedImageUri] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -46,7 +46,7 @@ const EncodeBismillah = () => {
 
       setOriginalImageUri(image.path);
     } catch (error) {
-      console.error(error);
+      // console.error(error);
     }
   };
 
@@ -58,7 +58,7 @@ const EncodeBismillah = () => {
 
     launchCamera(options, res => {
       if (res.didCancel) {
-        console.log('Cancelled');
+        // console.log('Cancelled');
       } else if (res.errorCode) {
         console.log(res.errorMessage);
       } else {
@@ -94,7 +94,8 @@ const EncodeBismillah = () => {
   const handleEncodeImage = async () => {
     try {
       if (!originalImageUri || !message) {
-        console.warn('Please select an image and enter a message');
+        setErrorMessage('Please select an image and enter a message');
+        setIsErrorModalVisible(true);
         setIsLoading(false);
         return;
       }
@@ -150,27 +151,35 @@ const EncodeBismillah = () => {
     }
   };
 
-  console.log('encodedImageUri',encodedImageUri);
+  const handleClearImage = () => {
+    setOriginalImageUri(null);
+    setMessage('');
+    setTextKey('');
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
         {originalImageUri && !encodedImageUri && (
           <>
-            <Text style={styles.header2Style}>Original Image</Text>
-            <Image
-              source={{uri: originalImageUri}}
-              style={{width: 300, height: 400}}
-            />
+            <Card mode="contained">
+              <Card.Title title="Original Image" titleVariant="titleMedium" />
+              <Card.Cover
+                source={{uri: originalImageUri}}
+                style={styles.image}
+              />
+            </Card>
           </>
         )}
         {encodedImageUri && (
           <>
-            <Text>Encoded Image</Text>
-            <Image
-              source={{uri: encodedImageUri}}
-              style={{width: 300, height: 400}}
-            />
+            <Card mode="contained">
+              <Card.Title title="Encoded Image" titleVariant="titleMedium" />
+              <Card.Cover
+                source={{uri: encodedImageUri}}
+                style={styles.image}
+              />
+            </Card>
           </>
         )}
 
@@ -195,7 +204,7 @@ const EncodeBismillah = () => {
         {!encodedImageUri && originalImageUri && (
           <>
             <TextInput
-              style={styles.input}
+              style={styles.inputMessage}
               onChangeText={onChangeMessage}
               value={message}
               placeholder="Your message here"
@@ -203,15 +212,31 @@ const EncodeBismillah = () => {
           </>
         )}
 
-        {!encodedImageUri && originalImageUri && (
-          <>
-            <TouchableOpacity onPress={handleEncodeImage} style={styles.button}>
-              <Text style={styles.buttonText}>Encode</Text>
-            </TouchableOpacity>
-          </>
-        )}
+        <View style={styles.footerButtonContainer}>
+          {!encodedImageUri && originalImageUri && (
+            <>
+              <TouchableOpacity
+                onPress={handleEncodeImage}
+                style={styles.button}>
+                <Text style={styles.buttonText}>Encode</Text>
+              </TouchableOpacity>
+            </>
+          )}
 
-        {encodedImageUri && <ShareButton encodedImageUri={encodedImageUri} />}  
+          {!encodedImageUri && originalImageUri && (
+            <>
+              <TouchableOpacity
+                onPress={handleClearImage}
+                style={styles.button}>
+                <Text style={styles.buttonText}>Reset</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {encodedImageUri && (
+            <ShareButton encodedImageUri={encodedImageUri} />
+          )}
+        </View>
 
         {isLoading && <ActivityIndicator size="large" color="#0000ff" />}
 
@@ -246,7 +271,7 @@ const EncodeBismillah = () => {
           <View style={styles.centeredView}>
             <View style={styles.modalView}>
               <Text style={styles.modalText}>
-                Encoded image has been saved!
+                Encoded image has been saved to your Gallery!
               </Text>
               <TouchableOpacity
                 style={{...styles.button1, backgroundColor: '#5f5ae8'}}

@@ -74,6 +74,85 @@ export const stylesHIh = StyleSheet.create({
     borderColor: '#DDD',
     backgroundColor: '#FFF',
   },
+
+
+
+});
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    // paddingTop: StatusBar.currentHeight,
+    paddingTop: 15,
+    backgroundColor: '#c9c5e6',
+  },
+  scrollView: {
+    marginHorizontal: 20,
+  },
+  input: {
+    height: 50,
+    marginVertical: 8,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    // paddingTop: 10,
+    borderColor: '#DDD',
+    backgroundColor: '#FFF',
+  },
+  inputMessage: {
+    textAlignVertical: 'top', 
+    height: 150,
+    marginVertical: 8,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    // paddingTop: 10,
+    borderColor: '#DDD',
+    backgroundColor: '#FFF',
+  },
+  buttonContainer: {
+    flex: 1,
+    flexDirection: 'column',
+    marginTop: 20,
+    justifyContent: 'center', // Center items vertically
+    alignSelf: 'center', // Center-align the buttons
+  },
+  button: {
+    backgroundColor: '#7369c2',
+    padding: 15,
+    borderRadius: 20,
+    // marginHorizontal: 10,
+    marginVertical: 8,
+  },
+  buttonText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    color: 'white',
+    marginHorizontal: 25,
+  },
+  headerContainer: {
+    flex: 1,
+  },
+  headerStyle: {
+    fontSize: 38,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    fontFamily: fonts.primary,
+    // color: 'white'
+  },
+  header2Style: {
+    fontSize: 30,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  image: {
+    height: 500,
+    // width: 300,
+    resizeMode: 'contain',
+    // justifyContent: 'center',
+    // marginHorizontal: ,
+  },
   centeredView: {
     flex: 1,
     justifyContent: 'center',
@@ -100,75 +179,23 @@ export const stylesHIh = StyleSheet.create({
     elevation: 2,
     marginTop: 20,
   },
-  textStyle: {
-    color: 'white',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
   modalText: {
     marginBottom: 20,
     textAlign: 'center',
     fontSize: 18,
     color: '#333', // Neutral Dark
   },
-});
-
-export const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: StatusBar.currentHeight,
-    // justifyContent: 'center', // Center items vertically
-    backgroundColor: '#c9c5e6',
-    // flexDirection: 'column',
-  },
-  scrollView: {
-    marginHorizontal: 20,
-  },
-  input: {
-    height: 50,
-    marginVertical: 12,
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 10,
-    borderColor: '#DDD',
-    backgroundColor: '#FFF',
-  },
-  buttonContainer: {
-    flex: 1,
-    flexDirection: 'column',
-    marginTop: 20,
-    justifyContent: 'center', // Center items vertically
-    alignSelf: 'center', // Center-align the buttons
-  },
-  button: {
-    backgroundColor: '#7369c2',
-    padding: 15,
-    borderRadius: 20,
-    // marginHorizontal: 10,
-    marginVertical: 12,
-  },
-  buttonText: {
+  textStyle: {
+    // color: 'white',
+    fontWeight: '600',
+    // textAlign: 'center',
     fontSize: 20,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    color: 'white',
-    marginHorizontal: 35,
+    paddingTop: 10
   },
-  headerContainer: {
-    flex: 1,
-  },
-  headerStyle: {
-    fontSize: 38,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    fontFamily: fonts.primary,
-    // color: 'white'
-  },
-  header2Style: {
-    fontSize: fonts.sizes.large,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
+  footerButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around'
+  }
 });
 
 export default styles;

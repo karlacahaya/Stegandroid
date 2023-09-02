@@ -13,84 +13,10 @@ import {
   Modal,
   View,
 } from 'react-native';
+import styles from '../helper/style';
 import ImagePicker from 'react-native-image-crop-picker';
 import Aes from 'react-native-aes-crypto';
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: StatusBar.currentHeight,
-  },
-  scrollView: {
-    marginHorizontal: 20,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    marginTop: 20,
-  },
-  button: {
-    backgroundColor: '#DDDDDD',
-    padding: 10,
-    borderRadius: 5,
-    marginHorizontal: 10,
-  },
-  buttonText: {
-    fontSize: 16,
-  },
-  imageContainer: {
-    flexDirection: 'row',
-    marginTop: 5,
-  },
-  image: {
-    height: 300,
-    width: 200,
-    resizeMode: 'contain',
-    marginHorizontal: 10,
-  },
-
-  input: {
-    height: 40,
-    margin: 12,
-    borderWidth: 1,
-    padding: 10,
-  },
-  centeredView: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 22,
-  },
-  modalView: {
-    margin: 20,
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 35,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  button1: {
-    borderRadius: 20,
-    padding: 10,
-    elevation: 2,
-  },
-  textStyle: {
-    color: 'grey',
-    fontWeight: 'bold',
-    textAlign: 'center',
-    fontSize: 20,
-  },
-  modalText: {
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-});
+import {Card} from 'react-native-paper';
 
 const {LSBSteganography} = NativeModules;
 
@@ -125,6 +51,11 @@ const DecodeScreen = () => {
     } else {
       setUseAesEncryption(true);
     }
+  };
+
+  const handleClearImage = () => {
+    setOriginalImageUri(null);
+    setDecodedImageMsg('');
   };
 
   // const decryptData = (encryptedData, key) =>
@@ -234,9 +165,13 @@ const DecodeScreen = () => {
       <ScrollView style={styles.scrollView}>
         {originalImageUri && (
           <>
-            <View style={styles.imageContainer}>
-              <Image source={{uri: originalImageUri}} style={styles.image} />
-            </View>
+            <Card mode="contained">
+              {/* <Card.Title title="Encoded Image" titleVariant="titleMedium" /> */}
+              <Card.Cover
+                source={{uri: originalImageUri}}
+                style={styles.image}
+              />
+            </Card>
           </>
         )}
 
@@ -257,24 +192,42 @@ const DecodeScreen = () => {
           </>
         )}
 
-        {!decodedImageMsg && originalImageUri && (
-          <>
-            <TouchableOpacity onPress={handleDecodeImage} style={styles.button}>
-              <Text style={styles.buttonText}>Decode</Text>
-            </TouchableOpacity>
-          </>
-        )}
+        <View style={styles.footerButtonContainer}>
+          {!decodedImageMsg && originalImageUri && (
+            <>
+              <TouchableOpacity
+                onPress={handleDecodeImage}
+                style={styles.button}>
+                <Text style={styles.buttonText}>Decode</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {!decodedImageMsg && originalImageUri && (
+            <>
+              <TouchableOpacity
+                onPress={handleClearImage}
+                style={styles.button}>
+                <Text style={styles.buttonText}>Clear Image</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
 
         {originalImageUri && decodedImageMsg && (
           <>
-            <Text>Messages</Text>
-            <Text style={styles.input}>{decodedImageMsg}</Text>
+            <Text style={styles.textStyle}>Messages</Text>
+            <Text style={styles.inputMessage}>{decodedImageMsg}</Text>
           </>
         )}
 
-        {/* <TouchableOpacity onPress={test} style={styles.button}>
-          <Text style={styles.buttonText}>test</Text>
-        </TouchableOpacity> */}
+        {decodedImageMsg && (
+          <>
+            <TouchableOpacity onPress={handleClearImage} style={styles.button}>
+              <Text style={styles.buttonText}>Reset</Text>
+            </TouchableOpacity>
+          </>
+        )}
 
         {isLoading && <ActivityIndicator size="large" color="#0000ff" />}
 
