@@ -99,6 +99,7 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
     }
 
     private Bitmap encodeImageWithMessage(String imageUri, String message, byte[] keyBytes) throws Exception {
+        Log.d("Test", "test encode image with encryption");
         // The image decoding logic
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inJustDecodeBounds = true;
@@ -154,6 +155,8 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
 
     private Bitmap encodeImageWithoutEncryption(String imageUri, String message)
             throws IOException, IllegalArgumentException {
+
+        Log.d("Test", "test encode image without encryption");
         // Log the image type before attempting to decode
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inJustDecodeBounds = true; // Avoid memory allocation here

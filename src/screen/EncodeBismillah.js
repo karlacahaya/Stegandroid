@@ -70,7 +70,7 @@ const EncodeBismillah = () => {
 
   const onChangeTextKey = newTextKey => {
     setTextKey(newTextKey);
-    // setUseAesEncryption(true);
+    setUseAesEncryption(true);
     // console.log('Key:', newTextKey);
   };
 
