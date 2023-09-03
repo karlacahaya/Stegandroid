@@ -66,16 +66,11 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void encode(String imageUri, String message, String password, boolean usePbkdf, Callback callback) {
+    public void encode(String imageUri, String message, Callback callback) {
         try {
             Bitmap encodedImage;
 
-            if (usePbkdf && !password.isEmpty()) {
-                byte[] keyBytes = generateEncryptionKey(password);
-                encodedImage = encodeImageWithMessage(imageUri, message, keyBytes);
-            } else {
-                encodedImage = encodeImageWithoutEncryption(imageUri, message); // Assuming you have this method
-            }
+            encodedImage = encodeImage(imageUri, message); // Assuming you have this method
 
             String savedImagePath = saveEncodedImage(encodedImage, imageUri);
             refreshGallery(savedImagePath);
@@ -90,73 +85,9 @@ public class LSBSteganographyModule extends ReactContextBaseJavaModule {
 
     }
 
-    private byte[] generateEncryptionKey(String password) throws Exception {
-        byte[] salt = generateSalt();
-        SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
-        KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 65536, 256);
-        SecretKey secretKey = factory.generateSecret(spec);
-        return secretKey.getEncoded();
-    }
-
-    private Bitmap encodeImageWithMessage(String imageUri, String message, byte[] keyBytes) throws Exception {
-        Log.d("Test", "test encode image with encryption");
-        // The image decoding logic
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inJustDecodeBounds = true;
-        BitmapFactory.decodeFile(imageUri, options);
-        Bitmap image = BitmapFactory.decodeFile(imageUri);
-
-        // Message length check
-        int imageSize = image.getWidth() * image.getHeight();
-        if (message.length() > imageSize) {
-            throw new Exception("Error: Message too long for this image");
-        }
-
-        // Encrypting the message using AES
-        Cipher cipher = Cipher.getInstance("AES");
-        SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
-        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
-        byte[] encryptedMessage = cipher.doFinal(message.getBytes());
-
-        // Embedding the encrypted message into the image's pixels
-        StringBuilder binaryMessage = new StringBuilder();
-        for (byte b : encryptedMessage) {
-            binaryMessage.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
-        }
-
-        Bitmap mutableBitmap = image.copy(Bitmap.Config.ARGB_8888, true);
-        embedMessageInBitmap(binaryMessage, mutableBitmap);
-
-        return mutableBitmap;
-    }
-
-    private void embedMessageInBitmap(StringBuilder binaryMessage, Bitmap mutableBitmap) {
-        int messageIndex = 0;
-        outerloop: for (int y = 0; y < mutableBitmap.getHeight(); y++) {
-            for (int x = 0; x < mutableBitmap.getWidth(); x++) {
-                if (messageIndex >= binaryMessage.length()) {
-                    break outerloop;
-                }
-
-                int pixel = mutableBitmap.getPixel(x, y);
-                char bit = binaryMessage.charAt(messageIndex);
-
-                if (bit == '1') {
-                    pixel |= 1;
-                } else {
-                    pixel &= ~1;
-                }
-
-                mutableBitmap.setPixel(x, y, pixel);
-                messageIndex++;
-            }
-        }
-    }
-
-    private Bitmap encodeImageWithoutEncryption(String imageUri, String message)
+    private Bitmap encodeImage(String imageUri, String message)
             throws IOException, IllegalArgumentException {
 
-        Log.d("Test", "test encode image without encryption");
         // Log the image type before attempting to decode
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inJustDecodeBounds = true; // Avoid memory allocation here
