@@ -17,6 +17,7 @@ const ShareButton = ({ encodedImageUri }) => {
       const shareOptions = {
         url: `file://${newFileLocation}`, // Using file:// URI
         type: 'image/png',
+        subject: 'Stegandroid - Finpro Defense',
         message: 'Check out this encoded image!',
         title: 'Share encoded image',
       };

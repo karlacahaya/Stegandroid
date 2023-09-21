@@ -101,7 +101,8 @@ export const styles = StyleSheet.create({
   },
   inputMessage: {
     textAlignVertical: 'top', 
-    height: 150,
+    // height: 150,
+    minHeight: 40, 
     marginVertical: 8,
     borderWidth: 1,
     borderRadius: 10,

@@ -13,7 +13,7 @@ import {
   Modal,
   View,
 } from 'react-native';
-import {colors, spacings, fonts, styles} from '../helper/style';
+import {styles} from '../helper/style';
 import ImagePicker from 'react-native-image-crop-picker';
 import GalleryPermissionButton from '../component/buttons/GalleryPermissions';
 import CameraPermissionButton from '../component/buttons/CameraPermissions';
@@ -107,7 +107,6 @@ const EncodeBismillah = () => {
       if (textKey && textKey.trim() !== '') {
         const password = textKey;
 
-        // Generate a random salt for better security rather than using a hardcoded one
         const salt = await Aes.randomKey(16);
         console.log('salt', salt);
 
@@ -119,13 +118,13 @@ const EncodeBismillah = () => {
         console.log('cipher:', cipher);
 
         finalMessage = `${salt}${iv}${cipher}`;
-        setUseAesEncryption(true);
       } else {
-        setUseAesEncryption(false);
+        console.log('no password detected');
       }
 
       console.log('finalMessage', finalMessage);
       const imagePath = originalImageUri.replace('file://', '');
+      console.log("imagePath", imagePath);
 
       LSBSteganography.encode(
         imagePath,
@@ -136,7 +135,7 @@ const EncodeBismillah = () => {
             setErrorMessage(result);
             setIsErrorModalVisible(true);
           } else {
-            // console.log('Encoded image path:', result);
+            console.log('result:', result);
             setEncodedImageUri(result);
             setIsSuccessModalVisible(true);
           }
@@ -146,6 +145,7 @@ const EncodeBismillah = () => {
       setIsLoading(false);
       setErrorMessage(`Error: ${error.message}`);
       setIsErrorModalVisible(true);
+      console.log(error);
     }
   };
 
@@ -206,6 +206,8 @@ const EncodeBismillah = () => {
               onChangeText={onChangeMessage}
               value={message}
               placeholder="Your message here"
+              multiline={true}
+              numberOfLines={4}
             />
           </>
         )}
@@ -285,50 +287,3 @@ const EncodeBismillah = () => {
 };
 
 export default EncodeBismillah;
-
-// const handleEncodeImage = async () => {
-//   if (!originalImageUri || !message) {
-//     console.warn('Please select an image and enter a message');
-//     return;
-//   }
-
-//   setIsLoading(true);
-
-//   try {
-//     const imagePath = originalImageUri.replace('file://', '');
-
-//     // Determine whether to use AES encryption based on the toggle switch
-//     if (useAesEncryption && textKey) {
-//       LSBSteganography.encode(imagePath, message, textKey, result => {
-//         setIsLoading(false);
-
-//         if (result.startsWith('Error:')) {
-//           setErrorMessage(result);
-//           setIsErrorModalVisible(true);
-//         } else {
-//           console.log('Encoded image path:', result);
-//           setEncodedImageUri(result);
-//           setIsSuccessModalVisible(true);
-//         }
-//       });
-//     } else {
-//       // No AES encryption
-//       LSBSteganography.encode(imagePath, message, null, result => {
-//         setIsLoading(false);
-
-//         if (result.startsWith('Error:')) {
-//           setErrorMessage(result);
-//           setIsErrorModalVisible(true);
-//         } else {
-//           console.log('Encoded image path:', result);
-//           setEncodedImageUri(result);
-//           setIsSuccessModalVisible(true);
-//         }
-//       });
-//     }
-//   } catch (error) {
-//     setIsLoading(false);
-//     setErrorMessage(error.message);
-//     setIsErrorModalVisible(true);
-//   }
-// };

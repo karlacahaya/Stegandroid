@@ -2,7 +2,6 @@ import React from 'react';
 import {
   Platform,
   PermissionsAndroid,
-  StyleSheet,
   TouchableOpacity,
   Text,
 } from 'react-native';

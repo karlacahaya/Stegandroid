@@ -1,12 +1,9 @@
 import React from 'react';
 import {
   Text,
-  StyleSheet,
   TouchableOpacity,
-  Image,
   SafeAreaView,
   ScrollView,
-  StatusBar,
   View,
 } from 'react-native';
 import { styles } from '../helper/style';

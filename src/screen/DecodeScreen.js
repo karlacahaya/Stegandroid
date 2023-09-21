@@ -21,7 +21,6 @@ import {Card} from 'react-native-paper';
 const {LSBSteganography} = NativeModules;
 
 const DecodeScreen = () => {
-  // const [text, setText] = React.useState('');
   const [textKey, setTextKey] = React.useState('');
   const [originalImageUri, setOriginalImageUri] = useState(null);
   const [useAesEncryption, setUseAesEncryption] = useState(false);
@@ -56,25 +55,8 @@ const DecodeScreen = () => {
   const handleClearImage = () => {
     setOriginalImageUri(null);
     setDecodedImageMsg('');
+    setTextKey('');
   };
-
-  // const decryptData = (encryptedData, key) =>
-  //   Aes.decrypt(encryptedData.cipher, key, encryptedData.iv, 'aes-256-cbc');
-
-  // const test = () => {
-  //   let cipher = 'XN0UcrK2dTEIzXklD7rZjA==';
-  //   let iv = 'acc699415f58c3ae8eb3741a5b26e78c';
-  //   let key =
-  //     '75f28dc2fb8ba0315b89388de0489e4c244ca3adac19a0302b82dd3b1331e55a';
-
-  //   decryptData({cipher, iv}, key)
-  //     .then(text => {
-  //       console.log('Decrypted:', text);
-  //     })
-  //     .catch(error => {
-  //       console.log(error);
-  //     });
-  // };
 
   const handleDecodeImage = async () => {
     if (!originalImageUri) {
@@ -98,27 +80,20 @@ const DecodeScreen = () => {
 
         // Check if the result contains the salt and iv (based on expected length)
         const hasEncryption = result.length > 64; // salt (32) + iv (32) + minimum cipherText (32)
-        // console.log('hasEncryption', hasEncryption);
         if (useAesEncryption) {
           console.log('textKey', textKey);
           if (textKey && hasEncryption) {
             decryptMessage(result);
-            console.log('aes encrypt true, correct password');
+            console.log("decryptMessage result", result);
           } else {
-            console.log('aes encrypt true, no password');
             setErrorMessage('Failed to decode');
             setIsErrorModalVisible(true);
           }
         } else {
           if (!textKey) {
-            console.log('aes encrypt false, no password');
             setDecodedImageMsg(result);
+            console.log("decryptMessage result !textkey", result);
             setIsSuccessModalVisible(true);
-            // console.log('aes encrypt false, wrong password')
-            // setErrorMessage(
-            //   'Error, you either inputs a wrong password or the image doesnt need a password',
-            // ); // This represents an error state when a password is given for a non-encrypted image
-            // setIsErrorModalVisible(true);
           }
         }
       });
@@ -132,23 +107,24 @@ const DecodeScreen = () => {
   const decryptMessage = async result => {
     try {
       const salt = await result.substr(0, 32);
+      console.log("salt", salt);
       const iv = await result.substr(32, 32);
-      const cipherText = await result.substr(64); // rest of the string
+      console.log("iv", iv);
+      const cipherText = await result.substr(64); // rest of the ciphertext
+      console.log("cipherText", cipherText);
 
-      // console.log('salt', salt);
-      // console.log('iv', iv);
-      // console.log('cipherText', cipherText);
-
-      // Derive the decryption key
+      // derive the decryption key
       const derivedKey = await Aes.pbkdf2(textKey, salt, 5000, 256);
+      console.log("derivedKey", derivedKey);
 
-      // Decrypt the message
+      // decrypt the message
       const decryptedMessage = await Aes.decrypt(
         cipherText,
         derivedKey,
         iv,
         'aes-256-cbc',
       );
+      console.log("decryptedMessage", decryptedMessage);
       setDecodedImageMsg(decryptedMessage);
       setIsSuccessModalVisible(true);
     } catch (error) {
@@ -166,7 +142,6 @@ const DecodeScreen = () => {
         {originalImageUri && (
           <>
             <Card mode="contained">
-              {/* <Card.Title title="Encoded Image" titleVariant="titleMedium" /> */}
               <Card.Cover
                 source={{uri: originalImageUri}}
                 style={styles.image}
@@ -217,7 +192,12 @@ const DecodeScreen = () => {
         {originalImageUri && decodedImageMsg && (
           <>
             <Text style={styles.textStyle}>Messages</Text>
-            <Text style={styles.inputMessage}>{decodedImageMsg}</Text>
+            <TextInput
+              style={styles.inputMessage}
+              multiline={true}
+              numberOfLines={4}>
+              {decodedImageMsg}
+            </TextInput>
           </>
         )}
 
